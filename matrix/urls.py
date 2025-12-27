@@ -11,4 +11,5 @@ urlpatterns = [
     path('api/matrix/move/', views.make_move, name='matrix_move'),
     path('api/matrix/<uuid:game_id>/leaderboard/', views.get_matrix_leaderboard, name='matrix_leaderboard'),
     path('api/matrix/reset/', views.reset_matrix_session, name='reset_matrix_session'),
+    path('api/matrix/stats/', views.get_matrix_stats, name='matrix_stats'),
 ]

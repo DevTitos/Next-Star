@@ -252,3 +252,40 @@ def reset_matrix_session(request):
             'success': False,
             'error': str(e)
         }, status=500)
+    
+
+@login_required
+def get_matrix_stats(request):
+    """Get CEO Matrix game statistics"""
+    try:
+        # Get active game
+        game = MatrixGame.objects.filter(is_active=True).first()
+        
+        if game:
+            # Count active sessions
+            active_sessions = PlayerGameSession.objects.filter(
+                game=game, 
+                is_completed=False
+            ).count()
+            
+            # Calculate prize pool (example: 10 STAR per player)
+            prize_pool = active_sessions * 10
+            
+            return JsonResponse({
+                'success': True,
+                'players': active_sessions,
+                'prize_pool': prize_pool,
+                'game_name': game.name,
+                'solved': bool(game.solved_by)
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'No active game found'
+            })
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
