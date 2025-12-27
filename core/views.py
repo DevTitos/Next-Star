@@ -27,7 +27,10 @@ from hiero.nft import create_nft, mint_nft, associate_nft
 from hiero.hcs import submit_message
 from core.main import generate_star_convergence_with_mapping
 from hiero.mirror_node import get_balance
-
+from django.core.paginator import Paginator
+from django.db.models import F, ExpressionWrapper, DecimalField
+from datetime import datetime, timedelta
+import json
 from hiero_sdk_python import (
     AccountId,
 )
@@ -198,6 +201,376 @@ def landing(request):
     
     cache.set(cache_key, context, 300)
     return render(request, 'landing.html', context)
+
+
+@login_required
+def dashboard_view(request):
+    """Main dashboard view with all sections"""
+    user = request.user
+    
+    try:
+        # Get user wallet
+        wallet = UserWallet.objects.select_related('user').get(user=user)
+        
+        # Get user stats
+        today = timezone.now().date()
+        week_ago = today - timedelta(days=7)
+        month_ago = today - timedelta(days=30)
+        
+        # Simulate game data (replace with actual models)
+        active_games = [
+            {
+                'id': 1,
+                'name': 'Tech Venture Arena',
+                'type': 'Venture Arena',
+                'players': 245,
+                'prize_pool': 12500,
+                'ends_in': '2 days',
+                'progress': 65,
+                'status': 'active',
+                'icon': 'fa-crosshairs',
+                'color': 'primary'
+            },
+            {
+                'id': 2,
+                'name': 'AgriTech Challenge',
+                'type': 'CEO Matrix',
+                'players': 189,
+                'prize_pool': 8500,
+                'ends_in': '1 day',
+                'progress': 85,
+                'status': 'active',
+                'icon': 'fa-chess-king',
+                'color': 'success'
+            },
+            {
+                'id': 3,
+                'name': 'FinTech Maze',
+                'type': 'Infinite Maze',
+                'players': 567,
+                'prize_pool': 21500,
+                'ends_in': '3 days',
+                'progress': 45,
+                'status': 'active',
+                'icon': 'fa-infinity',
+                'color': 'accent'
+            }
+        ]
+        
+        # User ventures (owned/participated)
+        user_ventures = [
+            {
+                'id': 1,
+                'name': 'EcoEnergy Africa',
+                'industry': 'Energy',
+                'equity': 5.2,
+                'value': 12500,
+                'growth': 15.3,
+                'status': 'active',
+                'role': 'Investor',
+                'members': 45
+            },
+            {
+                'id': 2,
+                'name': 'FarmChain AI',
+                'industry': 'Agriculture',
+                'equity': 12.8,
+                'value': 28750,
+                'growth': 32.7,
+                'status': 'active',
+                'role': 'CEO',
+                'members': 23
+            },
+            {
+                'id': 3,
+                'name': 'MediTech Connect',
+                'industry': 'Healthcare',
+                'equity': 3.5,
+                'value': 8750,
+                'growth': 8.2,
+                'status': 'funding',
+                'role': 'Investor',
+                'members': 67
+            }
+        ]
+        
+        # Wallet data with simulated blockchain info
+        wallet_data = {
+            'public_key': wallet.public_key[:20] + '...' + wallet.public_key[-20:],
+            'full_public_key': wallet.public_key,
+            'hedera_id': wallet.recipient_id,
+            'balance': get_balance(wallet.recipient_id) if hasattr(wallet, 'recipient_id') else 0,
+            'star_tokens': 2450,
+            'tickets': 15,
+            'nfts': 8,
+            'recent_transactions': [
+                {
+                    'id': '0x1a2b...3c4d',
+                    'type': 'received',
+                    'amount': 500,
+                    'token': 'STAR',
+                    'from': 'Game Pool',
+                    'time': '2 hours ago',
+                    'status': 'confirmed'
+                },
+                {
+                    'id': '0x2b3c...4d5e',
+                    'type': 'sent',
+                    'amount': 50,
+                    'token': 'STAR',
+                    'to': 'Venture Ticket',
+                    'time': '1 day ago',
+                    'status': 'confirmed'
+                },
+                {
+                    'id': '0x3c4d...5e6f',
+                    'type': 'received',
+                    'amount': 1250,
+                    'token': 'STAR',
+                    'from': 'Venture Win',
+                    'time': '3 days ago',
+                    'status': 'confirmed'
+                }
+            ]
+        }
+        
+        # User stats
+        user_stats = {
+            'total_ventures': len(user_ventures),
+            'total_invested': sum(v['value'] * v['equity'] / 100 for v in user_ventures),
+            'total_wins': 3,
+            'total_tickets': wallet_data['tickets'],
+            'win_rate': 25,  # percentage
+            'rank': 'Gold Venture Capitalist',
+            'level': 12,
+            'xp': 1250,
+            'xp_needed': 2000,
+            'streak': 7
+        }
+        
+        # Recent activity
+        recent_activity = [
+            {
+                'type': 'game_win',
+                'title': 'Won Venture Arena',
+                'description': 'First place in Tech Innovation Challenge',
+                'amount': '+1250 STAR',
+                'time': '2 hours ago',
+                'icon': 'fa-trophy',
+                'color': 'success',
+                'color_code': '123,63,228'
+            },
+            {
+                'type': 'investment',
+                'title': 'Invested in EcoEnergy',
+                'description': 'Purchased 5.2% equity',
+                'amount': '-500 STAR',
+                'time': '1 day ago',
+                'icon': 'fa-chart-line',
+                'color': 'primary',
+                'color_code': '123,63,228'
+            },
+            {
+                'type': 'nft_minted',
+                'title': 'NFT Minted',
+                'description': 'Equity Certificate #4589',
+                'amount': 'NFT',
+                'time': '2 days ago',
+                'icon': 'fa-certificate',
+                'color': 'accent',
+                'color_code': '0,255,157'
+            },
+            {
+                'type': 'ticket_purchase',
+                'title': 'Ticket Purchased',
+                'description': 'AgriTech Challenge entry',
+                'amount': '-50 STAR',
+                'time': '3 days ago',
+                'icon': 'fa-ticket-alt',
+                'color': 'warning',
+                'color_code': '0,255,157'
+            }
+        ]
+        
+        # Leaderboard data
+        leaderboard = [
+            {'rank': 1, 'name': 'Alex Venture', 'score': 24500, 'ventures': 12, 'change': 'up'},
+            {'rank': 2, 'name': 'Sarah Innovate', 'score': 19850, 'ventures': 9, 'change': 'up'},
+            {'rank': 3, 'name': 'Marcus Capital', 'score': 18750, 'ventures': 11, 'change': 'down'},
+            {'rank': 4, 'name': user.first_name, 'score': 16500, 'ventures': user_stats['total_ventures'], 'change': 'up'},
+            {'rank': 5, 'name': 'Lena Startup', 'score': 15400, 'ventures': 8, 'change': 'same'},
+        ]
+        
+        context = {
+            'user': user,
+            'wallet': wallet,
+            'wallet_data': wallet_data,
+            'active_games': active_games,
+            'user_ventures': user_ventures,
+            'user_stats': user_stats,
+            'recent_activity': recent_activity,
+            'leaderboard': leaderboard,
+            'today': today,
+            'section': request.GET.get('section', 'overview')
+        }
+        
+        return render(request, 'dashboard/dashboard.html', context)
+        
+    except UserWallet.DoesNotExist:
+        messages.error(request, "Wallet not found. Please contact support.")
+        return redirect('login')
+    except Exception as e:
+        logger.error(f"Dashboard error: {e}")
+        messages.error(request, "Error loading dashboard. Please try again.")
+        return redirect('landing')
+
+@login_required
+@require_http_methods(["POST"])
+def update_profile_view(request):
+    """Update user profile"""
+    if request.method == "POST":
+        try:
+            user = request.user
+            data = request.POST
+            
+            user.first_name = data.get('first_name', user.first_name)
+            user.last_name = data.get('last_name', user.last_name)
+            user.email = data.get('email', user.email)
+            
+            # Update bio if exists
+            if hasattr(user, 'profile'):
+                user.profile.bio = data.get('bio', '')
+                user.profile.location = data.get('location', '')
+                user.profile.website = data.get('website', '')
+                user.profile.save()
+            
+            user.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Profile updated successfully'
+            })
+            
+        except Exception as e:
+            logger.error(f"Profile update error: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+
+@login_required
+@require_http_methods(["POST"])
+def buy_ticket_view(request):
+    """Buy game tickets"""
+    try:
+        data = json.loads(request.body)
+        game_id = data.get('game_id')
+        amount = data.get('amount', 1)
+        
+        # Here you would integrate with payment system
+        # For now, simulate successful purchase
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully purchased {amount} ticket(s)',
+            'tickets': 15 + amount,  # Update with actual logic
+            'balance': 2450 - (50 * amount)  # Update with actual logic
+        })
+        
+    except Exception as e:
+        logger.error(f"Ticket purchase error: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Purchase failed'
+        })
+
+@login_required
+def get_wallet_details(request):
+    """Get detailed wallet information"""
+    try:
+        wallet = UserWallet.objects.get(user=request.user)
+        
+        # Get actual balance from Hedera (simulated)
+        balance = get_balance(wallet.recipient_id) if hasattr(wallet, 'recipient_id') else 0
+        
+        return JsonResponse({
+            'success': True,
+            'wallet': {
+                'public_key': wallet.public_key,
+                'hedera_id': wallet.recipient_id,
+                'balance': balance,
+                'star_tokens': 2450,  # Replace with actual
+                'tickets': 15,
+                'nft_count': 8
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Wallet details error: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@login_required
+def submit_strategy_view(request):
+    """Submit game strategy"""
+    if request.method == "POST":
+        try:
+            data = request.POST
+            game_id = data.get('game_id')
+            strategy_text = data.get('strategy')
+            
+            # Save strategy logic here
+            
+            messages.success(request, "Strategy submitted successfully!")
+            return JsonResponse({
+                'success': True,
+                'message': 'Strategy submitted for review'
+            })
+            
+        except Exception as e:
+            logger.error(f"Strategy submission error: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+        
+
+
+# Add to views.py
+
+from django.http import JsonResponse
+import json
+
+@login_required
+def get_wallet_balance(request):
+    """API endpoint for wallet balance"""
+    try:
+        wallet = UserWallet.objects.get(user=request.user)
+        balance = get_balance(wallet.recipient_id) if hasattr(wallet, 'recipient_id') else 0
+        
+        return JsonResponse({
+            'success': True,
+            'balance': balance,
+            'star_tokens': 2450  # Replace with actual logic
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def get_active_games(request):
+    """API endpoint for active games"""
+    # Replace with actual game data
+    games = [
+        {'id': 1, 'name': 'Tech Venture Arena', 'players': 245, 'prize_pool': 12500},
+        {'id': 2, 'name': 'AgriTech Challenge', 'players': 189, 'prize_pool': 8500},
+        {'id': 3, 'name': 'FinTech Maze', 'players': 567, 'prize_pool': 21500},
+    ]
+    
+    return JsonResponse({'success': True, 'games': games})
+
+
 
 '''
 

@@ -17,11 +17,7 @@ load_dotenv()
 operator_id = AccountId.from_string(os.getenv('OPERATOR_ID'))
 operator_key = PrivateKey.from_string_ed25519(os.getenv('OPERATOR_KEY'))
 
-# Astral Draw
-# The Launchpad
-# The Cosmic Clock
-# The Nebula Split
-# The Galactic Forum
+# Ventures
 def create_topic():
     network = Network(network='testnet')
     client = Client(network)
@@ -30,7 +26,7 @@ def create_topic():
 
     transaction = (
         TopicCreateTransaction(
-            memo="The Galactic Forum",
+            memo="Ventures",
             admin_key=operator_key.public_key()
         )
         .freeze_with(client)
