@@ -462,6 +462,7 @@ def update_profile_view(request):
 @require_http_methods(["POST"])
 def buy_ticket_view(request):
     """Buy game tickets"""
+    user_wallet = get_object_or_404(UserWallet, user=request.user)
     try:
         data = json.loads(request.body)
         game_id = data.get('game_id')
@@ -469,6 +470,35 @@ def buy_ticket_view(request):
         
         # Here you would integrate with payment system
         # For now, simulate successful purchase
+
+        try:
+            star_bal = get_balance(user_wallet.recipient_id)
+        except Exception as e:
+            star_bal = 0
+        if star_bal < 100:
+            messages.warning(request, "Insufficient Astral to Participate in this draw, please top up your account and try again!")
+            return redirect(request.META.get('HTTP_REFERER', '/'))
+        # Check user Astra balance using Mirror Node
+
+        with transaction.atomic():
+            # FOrge NFT TIcket
+            ticket_metadata = f"title:{draw.title} Convergence - Keys: {star_keys} - User :{user_wallet_id}"
+            nft_ = mint_nft(nft_token_id=nft_id, metadata=ticket_metadata)
+            if nft_['status'] == 'success':
+                assc=associate_nft(account_id=user_wallet.recipient_id, token_id=draw.nft_id, account_private_key=user_wallet.decrypt_key(), nft_id=nft_['message'])
+                if assc['status'] == 'success':
+                    # Create forged key
+                    serial_number = f"AK{draw_id}{user_wallet_id}{nft_['serial']}"
+                    # CReate HCS Message for immutability
+                    submit_message(message=ticket_metadata)
+                    # Transfer Astra from user wallet to Nebula Pool
+                    transfer = fund_pool(recipient_id=user_wallet.recipient_id, amount=100, account_private_key=user_wallet.decrypt_key())
+                    if transfer['status'] == 'failed':
+                        messages.warning(request, f"Token Transfer Failed")
+                        return redirect(request.META.get('HTTP_REFERER', '/'))
+            else:
+                messages.warning(request, f"Forging Failed: {nft_['message']}")
+                return redirect(request.META.get('HTTP_REFERER', '/'))
         
         return JsonResponse({
             'success': True,
@@ -538,11 +568,6 @@ def submit_strategy_view(request):
         
 
 
-# Add to views.py
-
-from django.http import JsonResponse
-import json
-
 @login_required
 def get_wallet_balance(request):
     """API endpoint for wallet balance"""
@@ -570,91 +595,48 @@ def get_active_games(request):
     
     return JsonResponse({'success': True, 'games': games})
 
+@login_required(login_url="login")
+@require_http_methods(["POST"])
+def buy_star(request):
+    try:
+        tel = request.POST.get("tel")
+        amount = request.POST.get("amount")
+        user = request.user
+        user_wallet = UserWallet.objects.get(user=user)
+        if not tel or not amount:
+            messages.warning(request, "Pone Number and amount are required")
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        try:
+            amount = int(amount)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            messages.warning(request, "Amount must be a positive integer.")
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        reference = id_generator()
 
+
+        # Transfer Token to User Wallet
+        process_buy = transfer_tokens(recipient_id=user_wallet.recipient_id, amount=amount*100)# Because of two decimal places
+        if process_buy['status'] == "failed":
+            messages.warning(request, "Failed to Transfer ASTRA. Try again later.")
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        else:
+            messages.success(request, f"{amount} ASTRA Transfered successfully to your account. Check your phone.")
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    
+    except requests.RequestException as e:
+        logger.error(f"M-Pesa API Error: {e}")
+        messages.warning(request, "Payment gateway unreachable.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
+    except Exception as e:
+        logger.exception("Unexpected error in buy_astra view")
+        messages.warning(request, "nternal server error.")
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 '''
-
-@login_required
-@require_http_methods(["POST"])
-def submit_keys(request):
-    """Optimized key submission with transaction"""
-    try:
-        draw_id = request.POST['draw_id']
-        key_1 = request.POST['key-1']
-        key_2 = request.POST['key-2']
-        key_3 = request.POST['key-3']
-        key_4 = request.POST['key-4']
-        key_5 = request.POST['key-5']
-        key_6 = request.POST['key-6']
-        if not draw_id and key_1 and key_2 and key_3 and key_4 and key_5 and key_6:
-            messages.warning(request, "All Fields are required to initiate Draw Key Forging!")
-            return redirect(request.META.get('HTTP_REFERER', '/'))
-        draw = get_object_or_404(Draw, id=draw_id)
-        
-        if not draw.is_active():
-            messages.warning(request, "Draw Not Active for Key Forging, try again later!")
-            return redirect(request.META.get('HTTP_REFERER', '/'))
-        
-        user_wallet_id = cache.get(f"user_{request.user.id}_wallet")
-        user_wallet = get_object_or_404(UserWallet, user=request.user)
-        if not user_wallet_id:
-            user_wallet_id = user_wallet.id
-            cache.set(f"user_{request.user.id}_wallet", user_wallet_id, 3600)
-        
-        # Check existing submission using exists() for speed
-        if ForgedKey.objects.filter(user_wallet=user_wallet, draw=draw).exists():
-            messages.warning(request, "Keys already submitted for this draw!")
-            return redirect(request.META.get('HTTP_REFERER', '/'))
     
-        try:
-            astra_bal = get_balance(user_wallet.recipient_id)
-        except Exception as e:
-            astra_bal = 0
-        if astra_bal < 100:
-            messages.warning(request, "Insufficient Astral to Participate in this draw, please top up your account and try again!")
-            return redirect(request.META.get('HTTP_REFERER', '/'))
-        # Check user Astra balance using Mirror Node
-        star_keys = [key_1, key_2, key_3, key_4, key_5, key_6]
-        
-        with transaction.atomic():
-            user_wallet = get_object_or_404(UserWallet, user=request.user)
-            # FOrge NFT TIcket
-            ticket_metadata = f"title:{draw.title} Convergence - Keys: {star_keys} - User :{user_wallet_id}"
-            print(draw.nft_id)
-            nft_ = mint_nft(nft_token_id=draw.nft_id, metadata=ticket_metadata)
-            if nft_['status'] == 'success':
-                assc=associate_nft(account_id=user_wallet.recipient_id, token_id=draw.nft_id, account_private_key=user_wallet.decrypt_key(), nft_id=nft_['message'])
-                if assc['status'] == 'success':
-                    # Create forged key
-                    serial_number = f"AK{draw_id}{user_wallet_id}{nft_['serial']}"
-                    forged_key = ForgedKey.objects.create(
-                        user_wallet=user_wallet,
-                        draw=draw,
-                        serial_number=serial_number,
-                        star_keys=str(star_keys),
-                    )
-                    draw.total_tickets_sold += 1
-                    draw.save()
-                    # CReate HCS Message for immutability
-                    submit_message(message=ticket_metadata)
-                    # Transfer Astra from user wallet to Nebula Pool
-                    transfer = fund_pool(recipient_id=user_wallet.recipient_id, amount=100, account_private_key=user_wallet.decrypt_key())
-                    if transfer['status'] == 'failed':
-                        messages.warning(request, f"Token Transfer Failed")
-                        return redirect(request.META.get('HTTP_REFERER', '/'))
-            else:
-                messages.warning(request, f"Forging Failed: {nft_['message']}")
-                return redirect(request.META.get('HTTP_REFERER', '/'))
-        
-        # Invalidate relevant caches
-        cache.delete_many([f"dashboard_{request.user.id}", f"user_{request.user.id}_keys"])
-        
-        messages.success(request, "Keys submitted successfully!")
-        return redirect(request.META.get('HTTP_REFERER', '/'))
-        
-    except Exception as e:
-        messages.warning(request, f"An Error Occured while Forging your star keys, please try again later: {e}")
-        return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @login_required
 @require_http_methods(["POST"])
@@ -703,226 +685,11 @@ def create_draw(request):
         messages.warning(request, f"An error occured: {e}")
         return redirect(request.META.get('HTTP_REFERER', '/'))
 
-# Optimized API views with selective field loading
-@login_required
-def draw_detail(request, draw_id):
-    user = request.user
-    """Optimized draw detail with field selection"""
-    draw = get_object_or_404(Draw.objects.only(
-        'id', 'title', 'status', 'prize_pool', 'draw_datetime', 'total_tickets_sold', 'winner_wallet_id', 'winning_ticket_serial'
-    ), id=draw_id)
 
-    # Get user's star keys for this draw
-    user_star_keys = ForgedKey.objects.filter(
-        user_wallet__user=user,
-        draw=draw
-    ).values_list('serial_number', flat=True)
-
-    draw_data = {
-        "success": True,
-        "draw": {
-            "id": draw.id,
-            "title": draw.title,
-            "symbol": "NEB7",
-            "prize_pool": draw.prize_pool,
-            "status": draw.status,
-            "draw_datetime": draw.draw_datetime,
-            "nft_token_id": draw.nft_id,
-            "nft_contract": draw.nft_id
-        },
-        "participants_count": draw.total_tickets_sold,
-        "user_keys": len(user_star_keys),
-        "star_keys": list(user_star_keys),
-    }
-    print(draw.nft_id)
-    if draw.status == "ENDED":
-        draw_data['winning_keys'] = draw.get_star_keys()
-        if draw.winner_wallet_id:
-            # Efficiently get winner username
-            winner_username = User.objects.filter(
-                id=draw.winner_wallet.user.id
-            ).values_list('username', flat=True).first()
-            draw_data['winner'] = {
-                'username': winner_username,
-                'ticket_serial': draw.winning_ticket_serial
-            }
-    
-    return JsonResponse(draw_data)
-
-@login_required
-def user_keys(request):
-    """Optimized user keys with efficient query"""
-    cache_key = f"user_{request.user.id}_keys"
-    cached_keys = cache.get(cache_key)
-    
-    if cached_keys:
-        return JsonResponse({'keys': cached_keys})
-    
-    user_wallet = get_object_or_404(UserWallet, user=request.user)
-    keys = ForgedKey.objects.filter(
-        user_wallet=user_wallet
-    ).select_related('draw').only(
-        'id', 'serial_number', 'created_at', 'nft_metadata',
-        'draw__title', 'draw__status'
-    ).order_by('-created_at')[:50]  # Limit results
-    
-    keys_data = []
-    for key in keys:
-        keys_data.append({
-            'id': key.id,
-            'serial_number': key.serial_number,
-            'draw_title': key.draw.title,
-            'draw_status': key.draw.status,
-            'created_at': key.created_at,
-            'is_winner': key.is_winner(),
-            'match_count': key.get_match_count() if key.draw.status == Draw.DrawStatus.ENDED else None,
-        })
-    
-    cache.set(cache_key, keys_data, 300)
-    return JsonResponse({'keys': keys_data})
-
-@cache_page(600)  # Cache for 10 minutes
-def platform_stats(request):
-    """Optimized platform stats with caching"""
-    cache_key = "platform_stats"
-    cached_stats = cache.get(cache_key)
-    
-    if cached_stats:
-        return JsonResponse(cached_stats)
-    
-    # Single query for all stats
-    stats = {
-        'total_draws': Draw.objects.count(),
-        'active_draws': Draw.objects.filter(
-            status__in=[Draw.DrawStatus.UPCOMING, Draw.DrawStatus.ACTIVE]
-        ).count(),
-        'total_prizes': float(Draw.objects.aggregate(Sum('prize_pool'))['prize_pool__sum'] or 0),
-        'total_players': UserWallet.objects.count(),
-        'keys_forged': ForgedKey.objects.count(),
-    }
-    
-    # Recent winners with efficient query
-    recent_winners = list(Draw.objects.filter(
-        status=Draw.DrawStatus.ENDED,
-        winner_wallet__isnull=False
-    ).select_related('winner_wallet__user').values(
-        'title', 'prize_pool', 'draw_datetime', 'winner_wallet__user__username'
-    )[:5])
-    
-    result = {'stats': stats, 'recent_winners': recent_winners}
-    cache.set(cache_key, result, 600)
-    return JsonResponse(result)
-
-# Batch processing optimization for admin functions
-@login_required
-@require_http_methods(["POST"])
-def process_draw(request, draw_id):
-    """Optimized draw processing with bulk operations"""
-    if not request.user.is_staff:
-        return JsonResponse({'success': False, 'error': 'Admin access required'})
-    
-    try:
-        draw = get_object_or_404(Draw, id=draw_id)
-        if draw.status != Draw.DrawStatus.ACTIVE and draw.draw_datetime < timezone.now():
-            return JsonResponse({'success': False, 'error': 'Draw cannot be processed'})
-        
-        try:
-            star_keys = generate_star_convergence_with_mapping()
-            print(star_keys)
-            msg = {
-                'draw':draw.title,
-                'contract_id':draw.nft_id,
-                'star_keys':star_keys,
-                'timestamp':timezone.now()
-            }
-            hcs_msg = submit_message(message=f"{msg}")
-            if hcs_msg['status'] == 'success':
-                draw.star_keys = str(star_keys)
-                draw.save()
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': f'Star Key Initialization Failed: {e}'})
-        
-        winner = draw.map_winner()
-        with transaction.atomic():
-            if winner:
-                prize_amount = draw.prize_pool * 0.7
-                # Update draw in single query
-                Draw.objects.filter(id=draw_id).update(
-                    total_prize_distributed=prize_amount,
-                    status=Draw.DrawStatus.ENDED,
-                    winner_wallet=winner.user_wallet,
-                    winning_ticket_serial=winner.serial_number
-                )
-                Draw.objects.filter(status=Draw.DrawStatus.UPCOMING).update(status=Draw.DrawStatus.ACTIVE)
-                Alert.objects.create(title="Cosmic Victory!", icon="trophy", content=f"{draw.title} Convergence Winner announced! ")
-            else:
-                Draw.objects.filter(id=draw_id).update(status=Draw.DrawStatus.ENDED)
-                Draw.objects.filter(status=Draw.DrawStatus.UPCOMING).update(status=Draw.DrawStatus.ACTIVE)
-        # Clear relevant caches
-        cache.delete_many(["platform_stats", "landing_page_data"])
-        
-        return JsonResponse({
-            'success': True,
-            'winner': {
-                'username': winner.user_wallet.user.username,
-                'serial_number': winner.serial_number,
-                'prize_amount': float(prize_amount)
-            } if winner else None,
-            'message': 'Draw processed successfully'
-        })
-        
-    except Exception as e:
-        logger.error(f"Draw processing error: {e}")
-        return JsonResponse({'success': False, 'error': str(e)})
-    
 def faqs(request):
     return render(request, 'faqs.html')
 
 
-def id_generator():
-    # ✅ Replace with your actual reference generator
-    import uuid
-    return str(uuid.uuid4())[:10]
-
-@login_required(login_url="login")
-@require_http_methods(["POST"])
-def buy_astra(request):
-    try:
-        tel = request.POST.get("tel")
-        amount = request.POST.get("amount")
-        user = request.user
-        user_wallet = UserWallet.objects.get(user=user)
-        if not tel or not amount:
-            messages.warning(request, "Pone Number and amount are required")
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-        try:
-            amount = int(amount)
-            if amount <= 0:
-                raise ValueError
-        except ValueError:
-            messages.warning(request, "Amount must be a positive integer.")
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-        reference = id_generator()
-
-
-        # Transfer Token to User Wallet
-        process_buy = transfer_tokens(recipient_id=user_wallet.recipient_id, amount=amount*100)# Because of two decimal places
-        if process_buy['status'] == "failed":
-            messages.warning(request, "Failed to Transfer ASTRA. Try again later.")
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-        else:
-            messages.success(request, f"{amount} ASTRA Transfered successfully to your account. Check your phone.")
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-    
-    except requests.RequestException as e:
-        logger.error(f"M-Pesa API Error: {e}")
-        messages.warning(request, "Payment gateway unreachable.")
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-
-    except Exception as e:
-        logger.exception("Unexpected error in buy_astra view")
-        messages.warning(request, "nternal server error.")
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 @login_required(login_url="login")
 def pay_mpesa(request):

@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 @login_required
 def matrix_game_view(request, game_id=None):
     """Main view for CEO Matrix game"""
+
+    
     if game_id:
         try:
             game = MatrixGame.objects.get(id=game_id, is_active=True)
@@ -45,8 +47,20 @@ def matrix_game_view(request, game_id=None):
             current_position={'layer': 0, 'row': 0, 'col': 0}
         )
     
+    print("=== DEBUG MATRIX GAME ===")
+    print(f"Game: {game}")
+    print(f"Matrix Data: {type(game.matrix_data)}")
+    print(f"Matrix Data keys: {game.matrix_data.keys() if isinstance(game.matrix_data, dict) else 'Not dict'}")
+
     context = {
-        'game': game,
+        'game': {
+            'game': game,  # Make sure this is passed correctly
+            'id': game.id,
+            'name': game.name,
+            'layers': game.layers,
+            'rows': game.rows,
+            'cols': game.cols,
+        },
         'session': session,
         'game_state': session.get_game_state(),
         'matrix_data': json.dumps(game.matrix_data) if game.matrix_data else '{}',

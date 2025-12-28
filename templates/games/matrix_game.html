@@ -826,28 +826,59 @@
 
 <!-- Game Data Storage -->
 <input type="hidden" id="gameId" value="{{ game.game.id }}">
-<input type="hidden" id="sessionId" value="{{ session.id }}">
+<input type="hidden" id="sessionId" value="{{ game_state.session_id|default:'test-session' }}">
 <input type="hidden" id="matrixData" value='{{ matrix_data|escapejs }}'>
 <input type="hidden" id="currentPosition" value='{{ game_state.current_position|default:"{\"layer\":0,\"row\":0,\"col\":0}"|escapejs }}'>
-<input type="hidden" id="maxMoves" value="{{ game.game.max_moves }}">
-<input type="hidden" id="isSolved" value="{{ game.game.solved_by|yesno:'true,false' }}">
+<input type="hidden" id="maxMoves" value="{{ game.game.max_moves|default:100 }}">
+<input type="hidden" id="isSolved" value="{{ game.game.solved_by|yesno:'true,false,false' }}">
+<input type="hidden" id="visitedCells" value='{{ game_state.cells_visited|default:"[]"|escapejs }}'>
+<input type="hidden" id="playerPath" value='{{ game_state.player_path|default:"[]"|escapejs }}'>
+<input type="hidden" id="movesMade" value="{{ game_state.moves_made|default:0 }}">
+<input type="hidden" id="playerScore" value="{{ game_state.score|default:0 }}">
 {% endblock %}
 
 {% block extra_js %}
+
 <script>
-    // Game State
+    // Game State - SIMPLIFIED VERSION
     let gameState = {
-        gameId: document.getElementById('gameId').value,
-        sessionId: document.getElementById('sessionId').value,
-        matrixData: JSON.parse(document.getElementById('matrixData').value || '{}'),
-        currentPosition: JSON.parse(document.getElementById('currentPosition').value),
-        maxMoves: parseInt(document.getElementById('maxMoves').value),
-        isSolved: document.getElementById('isSolved').value === 'true',
-        movesMade: {{ game_state.moves_made|default:0 }},
-        score: {{ game_state.score|default:0 }},
-        visitedCells: {{ game_state.cells_visited|default:"[]"|safe }},
-        playerPath: {{ game_state.player_path|default:"[]"|safe }}
+        gameId: '{{ game.game.id|default:"test-game" }}',
+        sessionId: '{{ session.id|default:"test-session" }}',
+        matrixData: {},
+        currentPosition: { layer: 0, row: 0, col: 0 },
+        maxMoves: 100,
+        isSolved: false,
+        movesMade: 0,
+        score: 0,
+        visitedCells: [],
+        playerPath: []
     };
+
+    // Parse matrix data from Django template
+    try {
+        const matrixDataJson = document.getElementById('matrixData').value;
+        if (matrixDataJson && matrixDataJson !== '{}') {
+            gameState.matrixData = JSON.parse(matrixDataJson);
+            console.log('Matrix data loaded:', Object.keys(gameState.matrixData).length, 'layers');
+        } else {
+            console.warn('No matrix data found, creating sample data');
+            createSampleMatrixData();
+        }
+    } catch (e) {
+        console.error('Error parsing matrix data:', e);
+        createSampleMatrixData();
+    }
+
+    // Parse game state from Django
+    try {
+        const gameStateJson = '{{ game_state|default:"{}"|safe }}';
+        if (gameStateJson && gameStateJson !== '{}') {
+            const parsedState = JSON.parse(gameStateJson.replace(/&quot;/g, '"'));
+            gameState = { ...gameState, ...parsedState };
+        }
+    } catch (e) {
+        console.error('Error parsing game state:', e);
+    }
 
     // Matrix dimensions
     const MATRIX_DIMENSIONS = {
@@ -856,155 +887,159 @@
         cols: {{ game.game.cols|default:5 }}
     };
 
-    // Cell size and spacing
-    const CELL_SIZE = 60;
-    const CELL_SPACING = 80;
-    const LAYER_SPACING = 200;
-
-    // Initialize game
-    document.addEventListener('DOMContentLoaded', function() {
-        // Check if game is already solved
-        if (gameState.isSolved) {
-            setTimeout(() => {
-                showSolutionModal();
-            }, 1000);
+    // Create sample matrix data if none exists
+    function createSampleMatrixData() {
+        console.log('Creating sample matrix data...');
+        
+        const sampleCategories = ['Finance', 'Marketing', 'Operations', 'Strategy', 'Leadership'];
+        const sampleIcons = ['💼', '📈', '💡', '🚀', '🏆', '⚡', '🎯', '🤔', '⭐', '💰'];
+        const sampleTypes = ['question', 'problem', 'solution', 'decision', 'opportunity'];
+        
+        gameState.matrixData = {};
+        
+        for (let layer = 0; layer < MATRIX_DIMENSIONS.layers; layer++) {
+            gameState.matrixData[layer] = {};
+            for (let row = 0; row < MATRIX_DIMENSIONS.rows; row++) {
+                gameState.matrixData[layer][row] = {};
+                for (let col = 0; col < MATRIX_DIMENSIONS.cols; col++) {
+                    const category = sampleCategories[(layer + row + col) % sampleCategories.length];
+                    const icon = sampleIcons[(layer * row * col) % sampleIcons.length];
+                    const type = sampleTypes[(layer + row + col) % sampleTypes.length];
+                    
+                    gameState.matrixData[layer][row][col] = {
+                        id: `${layer}-${row}-${col}`,
+                        value: (layer * 100) + (row * 10) + col + 1,
+                        category: category,
+                        type: type,
+                        icon: icon,
+                        visited: false,
+                        description: `${category} ${type}`,
+                        hint: `Think strategically about ${category.toLowerCase()}`,
+                        position: { layer, row, col }
+                    };
+                }
+            }
         }
         
-        // Render initial matrix
+        console.log('Sample matrix created:', gameState.matrixData);
+    }
+
+    // Initialize game on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing game...');
+        console.log('Matrix dimensions:', MATRIX_DIMENSIONS);
+        console.log('Matrix data keys:', Object.keys(gameState.matrixData));
+        
+        // Update debug info
+        updateDebugInfo();
+        
+        // Render matrix
         renderMatrix();
-        
-        // Update current cell info
-        updateCellInfo();
-        
-        // Add keyboard controls
-        setupKeyboardControls();
         
         // Update UI
         updateUI();
         
         // Add game log entry
-        addGameLog('Game loaded. Start navigating the CEO Matrix!', 'info');
+        addGameLog('CEO Matrix loaded successfully!', 'success');
+        
+        // Setup keyboard controls
+        setupKeyboardControls();
+        
+        console.log('Game initialized successfully');
     });
 
-    // Update the renderMatrix function in the JavaScript section:
-function renderMatrix() {
-    const container = document.getElementById('matrix3D');
-    container.innerHTML = '';
-    
-    // Calculate responsive cell size and spacing
-    const viewportWidth = document.getElementById('matrixViewport').offsetWidth;
-    const isMobile = viewportWidth < 768;
-    const isSmallMobile = viewportWidth < 480;
-    
-    // Adjust cell size based on screen width
-    let cellSize, cellSpacing, layerSpacing;
-    
-    if (isSmallMobile) {
-        cellSize = 30;
-        cellSpacing = 45;
-        layerSpacing = 120;
-    } else if (isMobile) {
-        cellSize = 40;
-        cellSpacing = 55;
-        layerSpacing = 150;
-    } else {
-        cellSize = 60;
-        cellSpacing = 80;
-        layerSpacing = 200;
-    }
-    
-    // Update CSS variables for cell size
-    document.querySelectorAll('.matrix-cell').forEach(cell => {
-        cell.style.width = cellSize + 'px';
-        cell.style.height = cellSize + 'px';
-        cell.style.fontSize = (cellSize * 0.4) + 'px';
-    });
-    
-    // Calculate center offset
-    const centerX = (MATRIX_DIMENSIONS.cols * cellSpacing) / 2;
-    const centerY = (MATRIX_DIMENSIONS.rows * cellSpacing) / 2;
-    
-    // Render each layer
-    for (let layer = 0; layer < MATRIX_DIMENSIONS.layers; layer++) {
-        const layerDiv = document.createElement('div');
-        layerDiv.className = 'matrix-layer';
-        layerDiv.id = `layer-${layer}`;
+    // Render Matrix Function - SIMPLIFIED
+    function renderMatrix() {
+        console.log('Rendering matrix...');
         
-        // Position layer in 3D space
-        const zOffset = (layer - MATRIX_DIMENSIONS.layers / 2) * layerSpacing;
-        layerDiv.style.transform = `translate(-50%, -50%) translateZ(${zOffset}px)`;
+        const container = document.getElementById('matrix3D');
+        if (!container) {
+            console.error('Matrix container not found!');
+            return;
+        }
         
-        // Render cells in this layer
-        for (let row = 0; row < MATRIX_DIMENSIONS.rows; row++) {
-            for (let col = 0; col < MATRIX_DIMENSIONS.cols; col++) {
-                const cell = createMatrixCell(layer, row, col, cellSize, cellSpacing);
-                layerDiv.appendChild(cell);
+        container.innerHTML = '';
+        
+        // Calculate responsive sizing
+        const viewport = document.getElementById('matrixViewport');
+        const isMobile = window.innerWidth < 768;
+        const cellSize = isMobile ? 40 : 60;
+        const cellSpacing = isMobile ? 55 : 80;
+        
+        console.log(`Rendering ${MATRIX_DIMENSIONS.layers} layers, ${MATRIX_DIMENSIONS.rows} rows, ${MATRIX_DIMENSIONS.cols} cols`);
+        
+        // Create each layer
+        for (let layer = 0; layer < MATRIX_DIMENSIONS.layers; layer++) {
+            const layerDiv = document.createElement('div');
+            layerDiv.className = 'matrix-layer';
+            layerDiv.id = `layer-${layer}`;
+            
+            // Position layer
+            const zOffset = (layer - MATRIX_DIMENSIONS.layers / 2) * 150;
+            layerDiv.style.transform = `translate(-50%, -50%) translateZ(${zOffset}px)`;
+            
+            // Check if this layer exists in data
+            if (!gameState.matrixData[layer]) {
+                console.warn(`Layer ${layer} not found in matrix data`);
+                continue;
             }
+            
+            // Create cells for this layer
+            for (let row = 0; row < MATRIX_DIMENSIONS.rows; row++) {
+                if (!gameState.matrixData[layer][row]) {
+                    console.warn(`Row ${row} not found in layer ${layer}`);
+                    continue;
+                }
+                
+                for (let col = 0; col < MATRIX_DIMENSIONS.cols; col++) {
+                    const cellData = gameState.matrixData[layer][row][col];
+                    
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell';
+                    cell.id = `cell-${layer}-${row}-${col}`;
+                    
+                    // Position cell
+                    const x = (col - MATRIX_DIMENSIONS.cols / 2 + 0.5) * cellSpacing;
+                    const y = (row - MATRIX_DIMENSIONS.rows / 2 + 0.5) * cellSpacing;
+                    cell.style.transform = `translate(${x}px, ${y}px)`;
+                    cell.style.width = `${cellSize}px`;
+                    cell.style.height = `${cellSize}px`;
+                    cell.style.fontSize = `${cellSize * 0.4}px`;
+                    
+                    // Set cell content
+                    if (cellData) {
+                        cell.innerHTML = cellData.icon || '?';
+                        cell.title = cellData.description || `Layer ${layer+1}, Row ${row+1}, Col ${col+1}`;
+                        
+                        // Check if visited
+                        if (gameState.visitedCells.includes(`${layer}-${row}-${col}`)) {
+                            cell.classList.add('visited');
+                        }
+                    } else {
+                        cell.innerHTML = '?';
+                        cell.title = 'Unknown';
+                    }
+                    
+                    // Add click event
+                    cell.addEventListener('click', () => {
+                        console.log(`Clicked cell: L${layer}-R${row}-C${col}`);
+                        moveToCell(layer, row, col);
+                    });
+                    
+                    layerDiv.appendChild(cell);
+                }
+            }
+            
+            container.appendChild(layerDiv);
         }
         
-        container.appendChild(layerDiv);
-    }
-    
-    // Highlight current position
-    highlightCurrentPosition();
-    
-    // Set initial layer visibility
-    switchLayer(gameState.currentPosition.layer);
-}
-
-function createMatrixCell(layer, row, col, cellSize, cellSpacing) {
-    const cell = document.createElement('div');
-    cell.className = 'matrix-cell';
-    cell.id = `cell-${layer}-${row}-${col}`;
-    
-    // Set cell size
-    cell.style.width = cellSize + 'px';
-    cell.style.height = cellSize + 'px';
-    cell.style.fontSize = (cellSize * 0.4) + 'px';
-    
-    // Position cell
-    const x = (col - MATRIX_DIMENSIONS.cols / 2 + 0.5) * cellSpacing;
-    const y = (row - MATRIX_DIMENSIONS.rows / 2 + 0.5) * cellSpacing;
-    cell.style.transform = `translate(${x}px, ${y}px)`;
-    
-    // Get cell data
-    const cellData = getCellData(layer, row, col);
-    
-    // Set cell content
-    if (cellData) {
-        cell.innerHTML = cellData.icon;
-        cell.title = cellData.description;
+        // Highlight current position
+        highlightCurrentPosition();
         
-        // Add visited class if already visited
-        const cellId = `${layer}-${row}-${col}`;
-        if (gameState.visitedCells.includes(cellId)) {
-            cell.classList.add('visited');
-        }
-    } else {
-        cell.innerHTML = '?';
-        cell.title = 'Unknown cell';
-    }
-    
-    // Add click event
-    cell.addEventListener('click', () => moveToCell(layer, row, col));
-    
-    // Add touch event for mobile
-    cell.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        moveToCell(layer, row, col);
-    }, { passive: false });
-    
-    return cell;
-}
-
-    
-
-    function getCellData(layer, row, col) {
-        try {
-            return gameState.matrixData[layer][row][col];
-        } catch (e) {
-            return null;
-        }
+        // Show current layer
+        switchLayer(gameState.currentPosition.layer);
+        
+        console.log('Matrix rendered successfully');
     }
 
     function highlightCurrentPosition() {
@@ -1016,123 +1051,83 @@ function createMatrixCell(layer, row, col, cellSize, cellSpacing) {
         // Add current class to current position
         const { layer, row, col } = gameState.currentPosition;
         const currentCell = document.getElementById(`cell-${layer}-${row}-${col}`);
+        
         if (currentCell) {
             currentCell.classList.add('current');
+            console.log(`Highlighted current cell: L${layer}-R${row}-C${col}`);
+        } else {
+            console.warn(`Could not find current cell: L${layer}-R${row}-C${col}`);
         }
-    }
-
-    // Movement Functions
-    function moveMatrix(dRow, dCol) {
-        const newRow = gameState.currentPosition.row + dRow;
-        const newCol = gameState.currentPosition.col + dCol;
-        
-        // Check bounds
-        if (newRow < 0 || newRow >= MATRIX_DIMENSIONS.rows || 
-            newCol < 0 || newCol >= MATRIX_DIMENSIONS.cols) {
-            addGameLog('Cannot move outside matrix boundaries', 'error');
-            return;
-        }
-        
-        moveToCell(gameState.currentPosition.layer, newRow, newCol);
-    }
-
-    function moveLayer(dLayer) {
-        const newLayer = gameState.currentPosition.layer + dLayer;
-        
-        // Check bounds
-        if (newLayer < 0 || newLayer >= MATRIX_DIMENSIONS.layers) {
-            addGameLog('Cannot move outside matrix boundaries', 'error');
-            return;
-        }
-        
-        switchLayer(newLayer);
-        moveToCell(newLayer, gameState.currentPosition.row, gameState.currentPosition.col);
     }
 
     function switchLayer(layer) {
+        console.log(`Switching to layer ${layer}`);
+        
         // Update layer buttons
         document.querySelectorAll('.layer-btn').forEach((btn, index) => {
             btn.classList.toggle('active', index === layer);
         });
         
-        // Update 3D view rotation to focus on this layer
+        // Update 3D rotation
         const container = document.getElementById('matrix3D');
-        const rotation = (layer / MATRIX_DIMENSIONS.layers) * 30;
-        container.style.transform = `rotateX(${rotation}deg)`;
+        if (container) {
+            const rotation = (layer / MATRIX_DIMENSIONS.layers) * 20;
+            container.style.transform = `rotateX(${rotation}deg)`;
+        }
         
-        // Update current layer display
+        // Update display
         document.getElementById('currentLayer').textContent = layer + 1;
     }
 
-    async function moveToCell(layer, row, col) {
-        if (gameState.isSolved) {
-            showSolutionModal();
+    // Simple movement function for testing
+    function moveToCell(layer, row, col) {
+        console.log(`Attempting to move to L${layer}-R${row}-C${col}`);
+        
+        // Validate move (simple adjacency check)
+        const current = gameState.currentPosition;
+        const dl = Math.abs(layer - current.layer);
+        const dr = Math.abs(row - current.row);
+        const dc = Math.abs(col - current.col);
+        
+        if (dl > 1 || dr > 1 || dc > 1) {
+            addGameLog(`Cannot move that far! Max 1 cell in any direction.`, 'error');
             return;
         }
         
-        // Check if move is valid (not more than 1 step away in any dimension)
-        const dl = Math.abs(layer - gameState.currentPosition.layer);
-        const dr = Math.abs(row - gameState.currentPosition.row);
-        const dc = Math.abs(col - gameState.currentPosition.col);
+        // Update position
+        gameState.currentPosition = { layer, row, col };
         
-        if (Math.max(dl, dr, dc) > 1) {
-            addGameLog('Invalid move! Can only move to adjacent cells.', 'error');
-            return;
+        // Mark as visited
+        const cellId = `${layer}-${row}-${col}`;
+        if (!gameState.visitedCells.includes(cellId)) {
+            gameState.visitedCells.push(cellId);
         }
         
-        // Send move to server
-        try {
-            const response = await fetch('{% url "matrix_move" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({
-                    game_id: gameState.gameId,
-                    layer: layer,
-                    row: row,
-                    col: col
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                // Update game state
-                gameState.currentPosition = { layer, row, col };
-                gameState.movesMade++;
-                gameState.score = data.game_state.score || gameState.score;
-                gameState.visitedCells = data.game_state.cells_visited || gameState.visitedCells;
-                gameState.playerPath = data.game_state.player_path || gameState.playerPath;
-                
-                // Update UI
-                updateUI();
-                highlightCurrentPosition();
-                updateCellInfo();
-                
-                // Add game log entry
-                addGameLog(data.message, 'success');
-                
-                // Add to recent moves
-                addRecentMove(layer, row, col, data.cell_data);
-                
-                // Check if game completed
-                if (data.is_completed) {
-                    setTimeout(() => {
-                        showCompletionModal(data.is_winner);
-                    }, 1000);
-                }
-            } else {
-                addGameLog('Error: ' + data.error, 'error');
-            }
-            
-        } catch (error) {
-            addGameLog('Network error: ' + error, 'error');
+        // Increment moves
+        gameState.movesMade++;
+        
+        // Update score
+        gameState.score += 10;
+        
+        // Update UI
+        updateUI();
+        highlightCurrentPosition();
+        updateCellInfo();
+        
+        // Add to game log
+        addGameLog(`Moved to Layer ${layer+1}, Row ${row+1}, Col ${col+1}`, 'success');
+        
+        // Add to recent moves
+        addRecentMove(layer, row, col);
+        
+        // Check for game over
+        if (gameState.movesMade >= gameState.maxMoves) {
+            setTimeout(() => {
+                showCompletionModal(false);
+            }, 1000);
         }
     }
 
-    // UI Update Functions
     function updateUI() {
         // Update stats
         document.getElementById('movesCount').textContent = gameState.movesMade;
@@ -1150,35 +1145,51 @@ function createMatrixCell(layer, row, col, cellSize, cellSpacing) {
     function updateButtonStates() {
         const { layer, row, col } = gameState.currentPosition;
         
-        // Direction buttons
-        document.getElementById('upBtn').disabled = row === 0;
-        document.getElementById('downBtn').disabled = row === MATRIX_DIMENSIONS.rows - 1;
-        document.getElementById('leftBtn').disabled = col === 0;
-        document.getElementById('rightBtn').disabled = col === MATRIX_DIMENSIONS.cols - 1;
-        document.getElementById('layerUpBtn').disabled = layer === 0;
-        document.getElementById('layerDownBtn').disabled = layer === MATRIX_DIMENSIONS.layers - 1;
+        const buttons = {
+            upBtn: row > 0,
+            downBtn: row < MATRIX_DIMENSIONS.rows - 1,
+            leftBtn: col > 0,
+            rightBtn: col < MATRIX_DIMENSIONS.cols - 1,
+            layerUpBtn: layer > 0,
+            layerDownBtn: layer < MATRIX_DIMENSIONS.layers - 1
+        };
+        
+        Object.keys(buttons).forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.disabled = !buttons[btnId];
+            }
+        });
     }
 
     function updateCellInfo() {
-        const cellData = getCellData(
-            gameState.currentPosition.layer,
-            gameState.currentPosition.row,
-            gameState.currentPosition.col
-        );
+        const { layer, row, col } = gameState.currentPosition;
+        const cellData = getCellData(layer, row, col);
         
-        if (cellData) {
-            document.getElementById('cellInfo').innerHTML = `
-                <div class="cell-icon">${cellData.icon}</div>
-                <div class="cell-title">${cellData.description}</div>
-                <div class="cell-category">${cellData.category}</div>
-                <div class="cell-hint" id="cellHint">${cellData.hint}</div>
+        const cellInfo = document.getElementById('cellInfo');
+        if (cellInfo && cellData) {
+            cellInfo.innerHTML = `
+                <div class="cell-icon">${cellData.icon || '💼'}</div>
+                <div class="cell-title">${cellData.description || 'Business Challenge'}</div>
+                <div class="cell-category">${cellData.category || 'Strategy'}</div>
+                <div class="cell-hint">${cellData.hint || 'Think like a CEO!'}</div>
             `;
         }
     }
 
-    // Game Log Functions
+    function getCellData(layer, row, col) {
+        try {
+            return gameState.matrixData[layer][row][col];
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Game log functions
     function addGameLog(message, type = 'info') {
         const logContainer = document.getElementById('gameLog');
+        if (!logContainer) return;
+        
         const logEntry = document.createElement('div');
         logEntry.className = `log-entry ${type}`;
         logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
@@ -1187,74 +1198,73 @@ function createMatrixCell(layer, row, col, cellSize, cellSpacing) {
         logContainer.scrollTop = logContainer.scrollHeight;
     }
 
-    function addRecentMove(layer, row, col, cellData) {
+    function addRecentMove(layer, row, col) {
         const movesContainer = document.getElementById('recentMoves');
+        if (!movesContainer) return;
+        
+        const cellData = getCellData(layer, row, col);
         const moveEntry = document.createElement('div');
         moveEntry.className = 'log-entry info';
         
         if (cellData) {
             moveEntry.innerHTML = `
                 <strong>${cellData.icon} ${cellData.category}</strong><br>
-                L${layer + 1}-R${row + 1}-C${col + 1} • ${cellData.type}
+                L${layer+1}-R${row+1}-C${col+1}
             `;
         } else {
-            moveEntry.textContent = `Moved to L${layer + 1}-R${row + 1}-C${col + 1}`;
+            moveEntry.textContent = `Moved to L${layer+1}-R${row+1}-C${col+1}`;
         }
         
         movesContainer.insertBefore(moveEntry, movesContainer.firstChild);
         
-        // Limit to 5 recent moves
-        if (movesContainer.children.length > 5) {
+        // Keep only last 5 moves
+        while (movesContainer.children.length > 5) {
             movesContainer.removeChild(movesContainer.lastChild);
         }
     }
 
-    // Game Control Functions
-    async function resetGame() {
-        if (confirm('Are you sure you want to reset your progress? This cannot be undone.')) {
-            try {
-                const response = await fetch('{% url "reset_matrix_session" %}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        game_id: gameState.gameId
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Reset game state
-                    gameState = {
-                        ...gameState,
-                        currentPosition: { layer: 0, row: 0, col: 0 },
-                        movesMade: 0,
-                        score: 0,
-                        visitedCells: [],
-                        playerPath: []
-                    };
-                    
-                    // Clear logs
-                    document.getElementById('gameLog').innerHTML = 
-                        '<div class="log-entry info">Game reset. Start navigating the CEO Matrix!</div>';
-                    document.getElementById('recentMoves').innerHTML = '';
-                    
-                    // Update UI
-                    updateUI();
-                    renderMatrix();
-                    updateCellInfo();
-                    
-                    addGameLog('Game reset successfully', 'info');
-                } else {
-                    addGameLog('Error: ' + data.error, 'error');
-                }
-                
-            } catch (error) {
-                addGameLog('Network error: ' + error, 'error');
-            }
+    // Control functions
+    function moveMatrix(dRow, dCol) {
+        const newRow = gameState.currentPosition.row + dRow;
+        const newCol = gameState.currentPosition.col + dCol;
+        
+        if (newRow >= 0 && newRow < MATRIX_DIMENSIONS.rows && 
+            newCol >= 0 && newCol < MATRIX_DIMENSIONS.cols) {
+            moveToCell(gameState.currentPosition.layer, newRow, newCol);
+        }
+    }
+
+    function moveLayer(dLayer) {
+        const newLayer = gameState.currentPosition.layer + dLayer;
+        
+        if (newLayer >= 0 && newLayer < MATRIX_DIMENSIONS.layers) {
+            switchLayer(newLayer);
+            moveToCell(newLayer, gameState.currentPosition.row, gameState.currentPosition.col);
+        }
+    }
+
+    function resetGame() {
+        if (confirm('Reset your game progress?')) {
+            gameState = {
+                ...gameState,
+                currentPosition: { layer: 0, row: 0, col: 0 },
+                movesMade: 0,
+                score: 0,
+                visitedCells: [],
+                playerPath: []
+            };
+            
+            // Clear logs
+            document.getElementById('gameLog').innerHTML = 
+                '<div class="log-entry info">Game reset. Start navigating!</div>';
+            document.getElementById('recentMoves').innerHTML = '';
+            
+            // Update UI
+            updateUI();
+            renderMatrix();
+            updateCellInfo();
+            
+            addGameLog('Game reset successfully', 'success');
         }
     }
 
@@ -1266,37 +1276,12 @@ function createMatrixCell(layer, row, col, cellSize, cellSpacing) {
         );
         
         if (cellData) {
-            document.getElementById('hintText').textContent = cellData.hint;
-            const hintModal = new bootstrap.Modal(document.getElementById('hintModal'));
-            hintModal.show();
-        }
-    }
-
-    function requestAnotherHint() {
-        // Deduct points and show new hint
-        if (gameState.score >= 10) {
-            gameState.score -= 10;
-            updateUI();
-            
-            // Generate new hint (in real app, this would come from server)
-            const hints = [
-                "Consider the long-term strategic implications",
-                "Look for patterns in successful business models",
-                "Think about scalability and sustainability",
-                "Balance innovation with practical execution",
-                "Focus on creating unique value propositions"
-            ];
-            
-            const randomHint = hints[Math.floor(Math.random() * hints.length)];
-            document.getElementById('hintText').textContent = randomHint;
-            
-            addGameLog('Used 10 points for an additional hint', 'info');
+            alert(`Hint: ${cellData.hint}`);
         } else {
-            addGameLog('Not enough points for additional hint', 'error');
+            alert('No hint available for this cell.');
         }
     }
 
-    // Completion Functions
     function showCompletionModal(isWinner) {
         const modal = new bootstrap.Modal(document.getElementById('completionModal'));
         const icon = document.getElementById('completionIcon');
@@ -1305,178 +1290,79 @@ function createMatrixCell(layer, row, col, cellSize, cellSpacing) {
         const stats = document.getElementById('completionStats');
         
         if (isWinner) {
-            // Winner modal
             icon.innerHTML = '<i class="fas fa-trophy"></i>';
-            icon.className = 'completion-icon win';
-            title.textContent = '🎉 GENIUS FOUND! 🎉';
-            message.textContent = 'You solved the CEO Matrix! Only one genius could solve it, and that\'s YOU!';
-            
-            stats.innerHTML = `
-                <div class="completion-stat">
-                    <div class="completion-stat-value">🏆</div>
-                    <div class="completion-stat-label">First Solver</div>
-                </div>
-                <div class="completion-stat">
-                    <div class="completion-stat-value">${gameState.score}</div>
-                    <div class="completion-stat-label">Final Score</div>
-                </div>
-                <div class="completion-stat">
-                    <div class="completion-stat-value">${gameState.movesMade}</div>
-                    <div class="completion-stat-label">Total Moves</div>
-                </div>
-                <div class="completion-stat">
-                    <div class="completion-stat-value">+1000</div>
-                    <div class="completion-stat-label">Bonus Points</div>
-                </div>
-            `;
+            title.textContent = '🎉 CONGRATULATIONS! 🎉';
+            message.textContent = 'You solved the CEO Matrix!';
         } else {
-            // Game over modal
             icon.innerHTML = '<i class="fas fa-hourglass-end"></i>';
-            icon.className = 'completion-icon lose';
             title.textContent = 'Game Over';
-            message.textContent = 'You reached the maximum number of moves. The matrix remains unsolved!';
-            
-            stats.innerHTML = `
-                <div class="completion-stat">
-                    <div class="completion-stat-value">${gameState.movesMade}</div>
-                    <div class="completion-stat-label">Moves Made</div>
-                </div>
-                <div class="completion-stat">
-                    <div class="completion-stat-value">${gameState.score}</div>
-                    <div class="completion-stat-label">Final Score</div>
-                </div>
-                <div class="completion-stat">
-                    <div class="completion-stat-value">${gameState.visitedCells.length}</div>
-                    <div class="completion-stat-label">Cells Explored</div>
-                </div>
-                <div class="completion-stat">
-                    <div class="completion-stat-value">0</div>
-                    <div class="completion-stat-label">Solution Found</div>
-                </div>
-            `;
+            message.textContent = 'You reached the maximum moves!';
         }
+        
+        stats.innerHTML = `
+            <div class="completion-stat">
+                <div class="completion-stat-value">${gameState.score}</div>
+                <div class="completion-stat-label">Score</div>
+            </div>
+            <div class="completion-stat">
+                <div class="completion-stat-value">${gameState.movesMade}</div>
+                <div class="completion-stat-label">Moves</div>
+            </div>
+            <div class="completion-stat">
+                <div class="completion-stat-value">${gameState.visitedCells.length}</div>
+                <div class="completion-stat-label">Cells</div>
+            </div>
+            <div class="completion-stat">
+                <div class="completion-stat-value">${isWinner ? '🏆' : '❌'}</div>
+                <div class="completion-stat-label">Solved</div>
+            </div>
+        `;
         
         modal.show();
     }
 
-    function showSolutionModal() {
-        const modal = new bootstrap.Modal(document.getElementById('solutionModal'));
-        modal.show();
-        
-        // Fetch solution path (in real app, this would come from server)
-        // For now, show placeholder
-        document.getElementById('solutionPath').textContent = 
-            'Solution path is hidden until the matrix is solved.';
-    }
-
-    function shareVictory() {
-        const shareText = `I just solved the CEO Matrix on NEXT STAR! 🧠🏆\n\nScore: ${gameState.score}\nMoves: ${gameState.movesMade}\n\nCan you solve it?`;
-        
-        if (navigator.share) {
-            navigator.share({
-                title: 'CEO Matrix Solved!',
-                text: shareText,
-                url: window.location.href
-            });
-        } else {
-            // Fallback: copy to clipboard
-            navigator.clipboard.writeText(shareText).then(() => {
-                alert('Victory message copied to clipboard!');
-            });
-        }
-    }
-
-    function viewLeaderboard() {
-        window.location.href = `/api/matrix/${gameState.gameId}/leaderboard/`;
-    }
-
-    // Keyboard Controls
+    // Keyboard controls
     function setupKeyboardControls() {
         document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                return; // Don't interfere with form inputs
-            }
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             
             switch(e.key.toLowerCase()) {
-                case 'w':
-                case 'arrowup':
-                    e.preventDefault();
-                    moveMatrix(-1, 0);
-                    break;
-                    
-                case 's':
-                case 'arrowdown':
-                    e.preventDefault();
-                    moveMatrix(1, 0);
-                    break;
-                    
-                case 'a':
-                case 'arrowleft':
-                    e.preventDefault();
-                    moveMatrix(0, -1);
-                    break;
-                    
-                case 'd':
-                case 'arrowright':
-                    e.preventDefault();
-                    moveMatrix(0, 1);
-                    break;
-                    
-                case 'q':
-                    e.preventDefault();
-                    moveLayer(-1);
-                    break;
-                    
-                case 'e':
-                    e.preventDefault();
-                    moveLayer(1);
-                    break;
-                    
-                case ' ':
-                    e.preventDefault();
-                    // Select current cell
-                    const { layer, row, col } = gameState.currentPosition;
-                    moveToCell(layer, row, col);
-                    break;
-                    
-                case 'r':
-                    if (e.ctrlKey) {
-                        e.preventDefault();
-                        resetGame();
-                    }
-                    break;
-                    
-                case 'h':
-                    if (e.ctrlKey) {
-                        e.preventDefault();
-                        showHint();
-                    }
-                    break;
+                case 'w': case 'arrowup': moveMatrix(-1, 0); break;
+                case 's': case 'arrowdown': moveMatrix(1, 0); break;
+                case 'a': case 'arrowleft': moveMatrix(0, -1); break;
+                case 'd': case 'arrowright': moveMatrix(0, 1); break;
+                case 'q': moveLayer(-1); break;
+                case 'e': moveLayer(1); break;
+                case 'r': if (e.ctrlKey) resetGame(); break;
+                case ' ': e.preventDefault(); break;
             }
         });
     }
 
-    // Helper function to get CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
+    // Debug functions
+    function updateDebugInfo() {
+        document.getElementById('matrixDataStatus').textContent = 
+            gameState.matrixData ? `${Object.keys(gameState.matrixData).length} layers` : 'No data';
+        document.getElementById('gameStateStatus').textContent = 
+            `Moves: ${gameState.movesMade}, Score: ${gameState.score}`;
+        document.getElementById('currentPositionStatus').textContent = 
+            `L${gameState.currentPosition.layer}-R${gameState.currentPosition.row}-C${gameState.currentPosition.col}`;
     }
 
-    // Auto-save game state periodically
-    setInterval(() => {
-        // In a real app, you might want to auto-save the game state
-        // For now, just log that auto-save would happen
-        console.log('Auto-save would happen here');
-    }, 30000); // Every 30 seconds
+    function showDebugInfo() {
+        console.log('Game State:', gameState);
+        console.log('Matrix Data:', gameState.matrixData);
+        console.log('Dimensions:', MATRIX_DIMENSIONS);
+        
+        // Check if matrix container exists
+        const container = document.getElementById('matrix3D');
+        console.log('Matrix container:', container ? 'Found' : 'Not found');
+        
+        if (container) {
+            console.log('Container children:', container.children.length);
+        }
+        
+        alert('Check console for debug information');
+    }
 </script>
 {% endblock %}
