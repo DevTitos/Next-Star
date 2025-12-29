@@ -1,0 +1,563 @@
+{% extends 'base.html' %}
+
+{% block title %}🌠 Create New Game | NEXT STAR Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    .game-form-card {
+        background: rgba(10, 11, 30, 0.8);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        border: 1px solid rgba(123, 63, 228, 0.3);
+        padding: 40px;
+        margin-bottom: 40px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .game-preview {
+        background: rgba(10, 11, 30, 0.6);
+        border-radius: 15px;
+        padding: 25px;
+        margin-top: 30px;
+        border: 1px dashed rgba(123, 63, 228, 0.5);
+    }
+
+    .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 4px;
+        margin: 20px 0;
+    }
+
+    .preview-cell {
+        aspect-ratio: 1;
+        background: rgba(123, 63, 228, 0.1);
+        border: 1px solid rgba(123, 63, 228, 0.3);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .preview-cell.filled {
+        background: rgba(0, 212, 255, 0.2);
+        color: var(--secondary);
+    }
+
+    .form-section {
+        margin-bottom: 30px;
+        padding-bottom: 30px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .form-section:last-child {
+        border-bottom: none;
+    }
+
+    .game-type-selector {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin: 20px 0;
+    }
+
+    .game-type-card {
+        background: rgba(10, 11, 30, 0.6);
+        border: 2px solid transparent;
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .game-type-card:hover {
+        transform: translateY(-5px);
+        border-color: rgba(123, 63, 228, 0.5);
+    }
+
+    .game-type-card.selected {
+        border-color: var(--primary);
+        background: rgba(123, 63, 228, 0.1);
+    }
+
+    .game-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        height: 60px;
+    }
+
+    .difficulty-badges {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 15px 0;
+    }
+
+    .difficulty-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .difficulty-badge:hover {
+        transform: scale(1.05);
+    }
+
+    .difficulty-badge.easy {
+        background: rgba(0, 255, 157, 0.1);
+        color: var(--success);
+        border-color: var(--success);
+    }
+
+    .difficulty-badge.medium {
+        background: rgba(255, 183, 77, 0.1);
+        color: var(--warning);
+        border-color: var(--warning);
+    }
+
+    .difficulty-badge.hard {
+        background: rgba(255, 77, 77, 0.1);
+        color: var(--danger);
+        border-color: var(--danger);
+    }
+
+    .difficulty-badge.expert {
+        background: rgba(123, 63, 228, 0.1);
+        color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .difficulty-badge.selected {
+        background: var(--gradient);
+        color: white;
+    }
+
+    .slider-container {
+        padding: 20px 0;
+    }
+
+    .slider-value {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 24px;
+        color: var(--secondary);
+        text-align: center;
+        margin: 10px 0;
+    }
+
+    input[type="range"] {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        outline: none;
+        -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 24px;
+        height: 24px;
+        background: var(--gradient);
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(123, 63, 228, 0.5);
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin: 15px 0;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        accent-color: var(--primary);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin: 30px 0;
+    }
+
+    .stat-card {
+        background: rgba(10, 11, 30, 0.6);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid rgba(123, 63, 228, 0.2);
+    }
+
+    .stat-value {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 32px;
+        color: var(--secondary);
+        margin: 10px 0;
+    }
+
+    .stat-label {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="gradient-text">🎮 Create New Game</h1>
+        <a href="{% url 'admin:index' %}" class="btn-outline-gradient">
+            <i class="fas fa-arrow-left me-2"></i>Back to Admin
+        </a>
+    </div>
+
+    <div class="game-form-card">
+        <form id="gameForm" method="POST" action="{% url 'create_venture_game' %}">
+            {% csrf_token %}
+            
+            <!-- Step 1: Game Type -->
+            <div class="form-section">
+                <h3 class="gradient-text mb-4"><i class="fas fa-gamepad me-2"></i>1. Select Game Type</h3>
+                <div class="game-type-selector">
+                    <div class="game-type-card" data-type="sudoku" onclick="selectGameType('sudoku')">
+                        <div class="game-icon">
+                            <i class="fas fa-th-large"></i>
+                        </div>
+                        <h4>Sudoku</h4>
+                        <p class="text-muted">Number placement puzzle</p>
+                        <div class="difficulty-badges">
+                            <span class="difficulty-badge easy">Easy</span>
+                            <span class="difficulty-badge expert">Expert</span>
+                        </div>
+                    </div>
+
+                    <div class="game-type-card" data-type="kakuro" onclick="selectGameType('kakuro')">
+                        <div class="game-icon">
+                            <i class="fas fa-crosshairs"></i>
+                        </div>
+                        <h4>Kakuro</h4>
+                        <p class="text-muted">Math crossword puzzle</p>
+                        <div class="difficulty-badges">
+                            <span class="difficulty-badge medium">Medium</span>
+                            <span class="difficulty-badge hard">Hard</span>
+                        </div>
+                    </div>
+
+                    <div class="game-type-card" data-type="cryptogram" onclick="selectGameType('cryptogram')">
+                        <div class="game-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <h4>Cryptogram</h4>
+                        <p class="text-muted">Code-breaking puzzle</p>
+                        <div class="difficulty-badges">
+                            <span class="difficulty-badge medium">Medium</span>
+                            <span class="difficulty-badge expert">Expert</span>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="gameType" name="game_type" required>
+            </div>
+
+            <!-- Step 2: Difficulty & Settings -->
+            <div class="form-section" id="settingsSection" style="display: none;">
+                <h3 class="gradient-text mb-4"><i class="fas fa-sliders-h me-2"></i>2. Configure Game Settings</h3>
+                
+                <!-- Difficulty -->
+                <div class="mb-4">
+                    <label class="form-label">Difficulty Level</label>
+                    <div class="difficulty-badges">
+                        <span class="difficulty-badge easy" onclick="selectDifficulty('easy')">Easy</span>
+                        <span class="difficulty-badge medium" onclick="selectDifficulty('medium')">Medium</span>
+                        <span class="difficulty-badge hard" onclick="selectDifficulty('hard')">Hard</span>
+                        <span class="difficulty-badge expert" onclick="selectDifficulty('expert')">Expert</span>
+                    </div>
+                    <input type="hidden" id="difficulty" name="difficulty">
+                </div>
+
+                <!-- Grid Size -->
+                <div class="mb-4">
+                    <label class="form-label">Grid Size: <span id="gridSizeValue">10</span>×<span id="gridSizeValue2">10</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="gridSize" name="grid_size" min="10" max="16" value="10" 
+                               oninput="updateGridSize(this.value)">
+                    </div>
+                    <small class="text-muted">Minimum 10×10 for proper challenge</small>
+                </div>
+
+                <!-- Game Options -->
+                <div class="mb-4">
+                    <label class="form-label">Game Options</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="autoGenerate" name="auto_generate" checked>
+                        <label for="autoGenerate">Auto-generate puzzles</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="timeBonus" name="time_bonus" checked>
+                        <label for="timeBonus">Enable time bonus</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="hintsEnabled" name="hints_enabled" checked>
+                        <label for="hintsEnabled">Enable hints</label>
+                    </div>
+                </div>
+
+                <!-- Time Limit -->
+                <div class="mb-4">
+                    <label class="form-label">Time Limit (minutes): <span id="timeLimitValue">60</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="timeLimit" name="time_limit" min="10" max="180" value="60" 
+                               oninput="updateTimeLimit(this.value)">
+                    </div>
+                </div>
+
+                <!-- Base Points -->
+                <div class="mb-4">
+                    <label class="form-label">Base Points: <span id="basePointsValue">100</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="basePoints" name="base_points" min="50" max="500" value="100" 
+                               oninput="updateBasePoints(this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Preview & Stats -->
+            <div class="form-section" id="previewSection" style="display: none;">
+                <h3 class="gradient-text mb-4"><i class="fas fa-eye me-2"></i>3. Preview & Statistics</h3>
+                
+                <div class="game-preview">
+                    <h5 id="previewTitle">Game Preview</h5>
+                    <div class="preview-grid" id="previewGrid">
+                        <!-- Dynamically generated grid -->
+                    </div>
+                    <p id="previewDescription" class="text-muted mt-3"></p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Estimated Difficulty</div>
+                        <div class="stat-value" id="statDifficulty">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg Solve Time</div>
+                        <div class="stat-value" id="statSolveTime">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Success Rate</div>
+                        <div class="stat-value" id="statSuccessRate">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Max Score</div>
+                        <div class="stat-value" id="statMaxScore">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Venture Selection -->
+            <div class="form-section" id="ventureSection" style="display: none;">
+                <h3 class="gradient-text mb-4"><i class="fas fa-rocket me-2"></i>4. Select Venture</h3>
+                
+                <div class="mb-4">
+                    <label class="form-label">Assign to Venture</label>
+                    <select class="form-control" id="ventureSelect" name="venture_id" required>
+                        <option value="">Select a venture...</option>
+                        {% for venture in ventures %}
+                        <option value="{{ venture.id }}">{{ venture.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    This game will be accessible to all players participating in the selected venture.
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-flex justify-content-between mt-5">
+                <button type="button" class="btn-outline-gradient" id="prevBtn" style="display: none;">
+                    <i class="fas fa-arrow-left me-2"></i>Previous
+                </button>
+                <button type="button" class="btn-gradient" id="nextBtn" onclick="nextStep()">
+                    Next Step <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+                <button type="submit" class="btn-gradient" id="submitBtn" style="display: none;">
+                    <i class="fas fa-plus me-2"></i>Create Game
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentStep = 1;
+    let selectedGameType = '';
+    let selectedDifficulty = '';
+
+    function selectGameType(type) {
+        selectedGameType = type;
+        document.querySelectorAll('.game-type-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        document.querySelector(`[data-type="${type}"]`).classList.add('selected');
+        document.getElementById('gameType').value = type;
+        
+        // Update preview
+        updatePreview();
+        showSection('settingsSection');
+    }
+
+    function selectDifficulty(level) {
+        selectedDifficulty = level;
+        document.querySelectorAll('.difficulty-badge').forEach(badge => {
+            badge.classList.remove('selected');
+        });
+        event.target.classList.add('selected');
+        document.getElementById('difficulty').value = level;
+        updateStats();
+    }
+
+    function updateGridSize(size) {
+        document.getElementById('gridSizeValue').textContent = size;
+        document.getElementById('gridSizeValue2').textContent = size;
+        updatePreview();
+        updateStats();
+    }
+
+    function updateTimeLimit(minutes) {
+        document.getElementById('timeLimitValue').textContent = minutes;
+    }
+
+    function updateBasePoints(points) {
+        document.getElementById('basePointsValue').textContent = points;
+        updateStats();
+    }
+
+    function updatePreview() {
+        const grid = document.getElementById('previewGrid');
+        const size = parseInt(document.getElementById('gridSize').value);
+        
+        grid.innerHTML = '';
+        grid.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+        
+        for (let i = 0; i < size * size; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'preview-cell';
+            
+            // Randomly fill some cells for preview
+            if (Math.random() > 0.7) {
+                cell.classList.add('filled');
+                cell.textContent = Math.floor(Math.random() * 9) + 1;
+            }
+            
+            grid.appendChild(cell);
+        }
+        
+        // Update description
+        const description = document.getElementById('previewDescription');
+        description.textContent = `${size}×${size} ${selectedGameType.charAt(0).toUpperCase() + selectedGameType.slice(1)} puzzle`;
+    }
+
+    function updateStats() {
+        if (!selectedGameType || !selectedDifficulty) return;
+        
+        const stats = {
+            'easy': { difficulty: 'Beginner', solveTime: '5-10', success: '85%', maxScore: '150' },
+            'medium': { difficulty: 'Intermediate', solveTime: '15-25', success: '65%', maxScore: '250' },
+            'hard': { difficulty: 'Advanced', solveTime: '30-45', success: '40%', maxScore: '400' },
+            'expert': { difficulty: 'Master', solveTime: '60+', success: '20%', maxScore: '500' }
+        };
+        
+        const stat = stats[selectedDifficulty] || stats['medium'];
+        
+        document.getElementById('statDifficulty').textContent = stat.difficulty;
+        document.getElementById('statSolveTime').textContent = stat.solveTime + ' min';
+        document.getElementById('statSuccessRate').textContent = stat.success;
+        
+        const basePoints = parseInt(document.getElementById('basePoints').value);
+        const multiplier = { easy: 1.5, medium: 2.5, hard: 4, expert: 5 }[selectedDifficulty];
+        document.getElementById('statMaxScore').textContent = Math.floor(basePoints * multiplier);
+    }
+
+    function showSection(sectionId) {
+        document.querySelectorAll('.form-section').forEach(section => {
+            section.style.display = 'none';
+        });
+        document.getElementById(sectionId).style.display = 'block';
+    }
+
+    function nextStep() {
+        currentStep++;
+        
+        if (currentStep === 2 && !selectedGameType) {
+            alert('Please select a game type first!');
+            currentStep--;
+            return;
+        }
+        
+        if (currentStep === 3 && !selectedDifficulty) {
+            alert('Please select a difficulty level!');
+            currentStep--;
+            return;
+        }
+        
+        if (currentStep === 2) {
+            showSection('settingsSection');
+            document.getElementById('prevBtn').style.display = 'inline-block';
+        } else if (currentStep === 3) {
+            showSection('previewSection');
+            updatePreview();
+            updateStats();
+        } else if (currentStep === 4) {
+            showSection('ventureSection');
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('submitBtn').style.display = 'inline-block';
+        }
+        
+        document.getElementById('prevBtn').style.display = currentStep > 1 ? 'inline-block' : 'none';
+    }
+
+    document.getElementById('prevBtn').onclick = function() {
+        currentStep--;
+        
+        if (currentStep === 1) {
+            showSection('settingsSection');
+            document.getElementById('prevBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'inline-block';
+            document.getElementById('submitBtn').style.display = 'none';
+        } else if (currentStep === 2) {
+            showSection('previewSection');
+            document.getElementById('nextBtn').style.display = 'inline-block';
+            document.getElementById('submitBtn').style.display = 'none';
+        } else if (currentStep === 3) {
+            showSection('ventureSection');
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('submitBtn').style.display = 'inline-block';
+        }
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePreview();
+    });
+</script>
+{% endblock %}

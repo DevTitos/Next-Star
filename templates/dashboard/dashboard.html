@@ -2221,7 +2221,7 @@
     document.getElementById('confirmBuyTickets')?.addEventListener('click', function() {
         const amount = parseInt(document.getElementById('ticketAmount').value) || 1;
         
-        fetch('{% url "buy_ticket" %}', {
+        fetch('{% url "buy_venture_ticket" 1 %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'governance',
     'matrix',
     'ventures',
+    'gaming',
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,413 @@
+{% extends 'base.html' %}
+
+{% block title %}🌠 Download Puzzles | {{ venture.name }} | NEXT STAR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .download-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        margin: 40px 0;
+    }
+    
+    .download-card {
+        background: rgba(10, 11, 30, 0.8);
+        border-radius: 15px;
+        padding: 30px;
+        text-align: center;
+        border: 1px solid rgba(123, 63, 228, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .download-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--secondary);
+    }
+    
+    .format-icon {
+        font-size: 48px;
+        margin-bottom: 20px;
+        color: var(--secondary);
+    }
+    
+    .format-selector {
+        margin: 20px 0;
+    }
+    
+    .format-btn {
+        padding: 10px 20px;
+        margin: 5px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--light);
+        cursor: pointer;
+    }
+    
+    .format-btn.active {
+        background: var(--gradient);
+        color: white;
+    }
+    
+    .puzzle-count {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin: 10px 0;
+    }
+    
+    .download-progress {
+        margin: 20px 0;
+    }
+    
+    .progress-bar {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: var(--gradient);
+        border-radius: 3px;
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="gradient-text">📥 Download Puzzles</h1>
+        <a href="{% url 'game_hub' venture_id=venture.id %}" class="btn-outline-gradient">
+            <i class="fas fa-arrow-left me-2"></i>Back to Game Hub
+        </a>
+    </div>
+    
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        Download puzzles to solve offline. Solutions are encrypted and will be verified when you submit.
+    </div>
+    
+    <div class="download-options">
+        <!-- Single Puzzle -->
+        <div class="download-card">
+            <div class="format-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <h3>Single Puzzle</h3>
+            <p>Download one puzzle at a time with solution key</p>
+            
+            <div class="format-selector">
+                <button class="format-btn active" onclick="selectFormat('pdf')">PDF</button>
+                <button class="format-btn" onclick="selectFormat('json')">JSON</button>
+                <button class="format-btn" onclick="selectFormat('image')">Image</button>
+            </div>
+            
+            <select class="form-control mt-3" id="puzzleSelect">
+                {% for game in games %}
+                <optgroup label="{{ game.get_game_type_display }}">
+                    {% for puzzle in game.puzzles.all %}
+                    <option value="{{ puzzle.id }}">Puzzle {{ puzzle.puzzle_number }} ({{ game.get_difficulty_display }})</option>
+                    {% endfor %}
+                </optgroup>
+                {% endfor %}
+            </select>
+            
+            <button class="btn-gradient w-100 mt-3" onclick="downloadSinglePuzzle()">
+                <i class="fas fa-download me-2"></i>Download Puzzle
+            </button>
+        </div>
+        
+        <!-- Puzzle Pack -->
+        <div class="download-card">
+            <div class="format-icon">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <h3>Puzzle Pack</h3>
+            <p>Download multiple puzzles as a collection</p>
+            
+            <div class="puzzle-count" id="selectedCount">0 puzzles selected</div>
+            
+            <div class="puzzle-checklist">
+                {% for game in games %}
+                <div class="game-section">
+                    <h5>{{ game.get_game_type_display }}</h5>
+                    {% for puzzle in game.puzzles.all %}
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="puzzle_{{ puzzle.id }}" 
+                               value="{{ puzzle.id }}" onchange="updateSelection()">
+                        <label for="puzzle_{{ puzzle.id }}">
+                            Puzzle {{ puzzle.puzzle_number }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+            
+            <button class="btn-gradient w-100 mt-3" onclick="downloadPuzzlePack()">
+                <i class="fas fa-box me-2"></i>Download Pack (ZIP)
+            </button>
+        </div>
+        
+        <!-- Print Mode -->
+        <div class="download-card">
+            <div class="format-icon">
+                <i class="fas fa-print"></i>
+            </div>
+            <h3>Print Mode</h3>
+            <p>Generate printer-friendly versions</p>
+            
+            <div class="mt-3">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="includeSolutions" checked>
+                    <label for="includeSolutions">Include solutions (separate page)</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showHints" checked>
+                    <label for="showHints">Include hint guides</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="compactLayout">
+                    <label for="compactLayout">Compact layout (multiple per page)</label>
+                </div>
+            </div>
+            
+            <div class="download-progress" id="printProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="printProgressBar"></div>
+                </div>
+                <div class="progress-text" id="printProgressText">Preparing...</div>
+            </div>
+            
+            <button class="btn-gradient w-100 mt-3" onclick="generatePrintable()">
+                <i class="fas fa-print me-2"></i>Generate Printable
+            </button>
+        </div>
+    </div>
+    
+    <!-- Download History -->
+    <div class="mt-5">
+        <h3 class="gradient-text mb-4">Download History</h3>
+        <div class="table-responsive">
+            <table class="table table-dark">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Format</th>
+                        <th>Puzzles</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="downloadHistory">
+                    <!-- Populated via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let selectedFormat = 'pdf';
+    let selectedPuzzles = new Set();
+    
+    function selectFormat(format) {
+        selectedFormat = format;
+        document.querySelectorAll('.format-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+    }
+    
+    function updateSelection() {
+        selectedPuzzles.clear();
+        document.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+            selectedPuzzles.add(cb.value);
+        });
+        document.getElementById('selectedCount').textContent = 
+            `${selectedPuzzles.size} puzzles selected`;
+    }
+    
+    function downloadSinglePuzzle() {
+        const puzzleId = document.getElementById('puzzleSelect').value;
+        
+        showAlert('Preparing download...', 'info');
+        
+        fetch(`/api/games/download/puzzle/${puzzleId}/${selectedFormat}/`)
+            .then(response => {
+                if (response.ok) return response.blob();
+                throw new Error('Download failed');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `puzzle_${puzzleId}.${selectedFormat}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                addToHistory(puzzleId, selectedFormat);
+                showAlert('Download complete!', 'success');
+            })
+            .catch(error => {
+                showAlert('Download failed: ' + error.message, 'danger');
+            });
+    }
+    
+    function downloadPuzzlePack() {
+        if (selectedPuzzles.size === 0) {
+            showAlert('Please select at least one puzzle', 'warning');
+            return;
+        }
+        
+        showAlert(`Creating pack with ${selectedPuzzles.size} puzzles...`, 'info');
+        
+        fetch('/api/games/download/pack/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                puzzle_ids: Array.from(selectedPuzzles),
+                format: selectedFormat
+            })
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `puzzle_pack_${Date.now()}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            showAlert('Puzzle pack downloaded!', 'success');
+        })
+        .catch(error => {
+            showAlert('Failed to create pack', 'danger');
+        });
+    }
+    
+    function generatePrintable() {
+        const progress = document.getElementById('printProgress');
+        const progressBar = document.getElementById('printProgressBar');
+        const progressText = document.getElementById('printProgressText');
+        
+        progress.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Initializing...';
+        
+        // Simulate progress
+        let progressValue = 0;
+        const interval = setInterval(() => {
+            progressValue += 10;
+            progressBar.style.width = `${progressValue}%`;
+            progressText.textContent = `Processing... ${progressValue}%`;
+            
+            if (progressValue >= 100) {
+                clearInterval(interval);
+                progressText.textContent = 'Complete! Opening print preview...';
+                
+                // Generate printable HTML
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <html>
+                    <head>
+                        <title>Printable Puzzles - {{ venture.name }}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; }
+                            .puzzle-page { page-break-after: always; margin: 20px; }
+                            .solution-page { page-break-after: always; margin: 20px; }
+                            @media print {
+                                .no-print { display: none; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>{{ venture.name }} - Printable Puzzles</h1>
+                        <div class="no-print">
+                            <button onclick="window.print()">Print All</button>
+                            <button onclick="window.close()">Close</button>
+                        </div>
+                        <!-- Generated puzzle content here -->
+                    </body>
+                    </html>
+                `);
+                
+                setTimeout(() => {
+                    printWindow.print();
+                }, 1000);
+            }
+        }, 200);
+    }
+    
+    function addToHistory(puzzleId, format) {
+        const history = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
+        history.unshift({
+            date: new Date().toISOString(),
+            puzzleId: puzzleId,
+            format: format,
+            status: 'downloaded'
+        });
+        
+        // Keep only last 10 items
+        if (history.length > 10) history.pop();
+        
+        localStorage.setItem('downloadHistory', JSON.stringify(history));
+        updateHistoryTable();
+    }
+    
+    function updateHistoryTable() {
+        const history = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
+        const table = document.getElementById('downloadHistory');
+        table.innerHTML = '';
+        
+        history.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${new Date(item.date).toLocaleDateString()}</td>
+                <td>Puzzle ${item.puzzleId}</td>
+                <td>${item.format.toUpperCase()}</td>
+                <td>1</td>
+                <td><span class="badge bg-success">${item.status}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" 
+                            onclick="redownload('${item.puzzleId}', '${item.format}')">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </td>
+            `;
+            table.appendChild(row);
+        });
+    }
+    
+    function redownload(puzzleId, format) {
+        fetch(`/api/games/download/puzzle/${puzzleId}/${format}/`)
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `puzzle_${puzzleId}_${Date.now()}.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            });
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        updateHistoryTable();
+    });
+</script>
+{% endblock %}

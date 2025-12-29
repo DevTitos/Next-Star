@@ -1,0 +1,1116 @@
+{% extends 'base.html' %}
+
+{% block title %}🌠 Sudoku | {{ venture.name }} | NEXT STAR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sudoku-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .game-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: rgba(10, 11, 30, 0.8);
+        border-radius: 15px;
+        border: 1px solid rgba(123, 63, 228, 0.3);
+    }
+
+    .game-info h1 {
+        font-size: 2.5rem;
+        margin-bottom: 5px;
+    }
+
+    .venture-info {
+        color: var(--secondary);
+        font-family: 'Orbitron', sans-serif;
+    }
+
+    .game-stats {
+        display: flex;
+        gap: 30px;
+    }
+
+    .stat-box {
+        text-align: center;
+        padding: 15px 25px;
+        background: rgba(123, 63, 228, 0.1);
+        border-radius: 12px;
+        border: 1px solid rgba(123, 63, 228, 0.3);
+    }
+
+    .stat-value {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--secondary);
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-top: 5px;
+    }
+
+    .game-content {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 40px;
+    }
+
+    @media (max-width: 1024px) {
+        .game-content {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .sudoku-board-container {
+        position: relative;
+    }
+
+    .sudoku-board {
+        display: grid;
+        grid-template-columns: repeat({{ size }}, 1fr);
+        grid-template-rows: repeat({{ size }}, 1fr);
+        gap: 2px;
+        background: rgba(123, 63, 228, 0.3);
+        padding: 10px;
+        border-radius: 12px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .sudoku-cell {
+        aspect-ratio: 1;
+        background: rgba(10, 11, 30, 0.9);
+        border: 1px solid rgba(123, 63, 228, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .sudoku-cell:hover {
+        background: rgba(123, 63, 228, 0.1);
+    }
+
+    .sudoku-cell.selected {
+        background: rgba(0, 212, 255, 0.2);
+        border-color: var(--secondary);
+    }
+
+    .sudoku-cell.highlighted {
+        background: rgba(123, 63, 228, 0.1);
+    }
+
+    .sudoku-cell.given {
+        color: var(--secondary);
+        font-weight: 700;
+    }
+
+    .sudoku-cell.user-filled {
+        color: var(--light);
+    }
+
+    .sudoku-cell.error {
+        color: var(--danger);
+        background: rgba(255, 77, 77, 0.1);
+    }
+
+    .sudoku-cell.hint {
+        animation: pulse 1s infinite;
+    }
+
+    /* Sub-grid borders */
+    .sudoku-cell:nth-child(3n) {
+        border-right: 3px solid rgba(123, 63, 228, 0.5);
+    }
+
+    .sudoku-cell:nth-child(3n+1) {
+        border-left: 3px solid rgba(123, 63, 228, 0.5);
+    }
+
+    .sudoku-board > div:nth-child(n+19):nth-child(-n+27) {
+        border-bottom: 3px solid rgba(123, 63, 228, 0.5);
+    }
+
+    .sudoku-board > div:nth-child(n+1):nth-child(-n+9) {
+        border-top: 3px solid rgba(123, 63, 228, 0.5);
+    }
+
+    .sudoku-board > div:nth-child(n+10):nth-child(-n+18) {
+        border-bottom: 3px solid rgba(123, 63, 228, 0.5);
+    }
+
+    .game-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-width: 300px;
+    }
+
+    .number-pad {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+        padding: 20px;
+        background: rgba(10, 11, 30, 0.8);
+        border-radius: 15px;
+        border: 1px solid rgba(123, 63, 228, 0.3);
+    }
+
+    .number-btn {
+        aspect-ratio: 1;
+        background: rgba(123, 63, 228, 0.1);
+        border: 2px solid rgba(123, 63, 228, 0.3);
+        border-radius: 10px;
+        color: var(--light);
+        font-size: 1.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .number-btn:hover {
+        background: rgba(123, 63, 228, 0.2);
+        transform: translateY(-3px);
+    }
+
+    .number-btn.active {
+        background: var(--gradient);
+        color: white;
+        border-color: transparent;
+    }
+
+    .control-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .control-btn {
+        padding: 15px;
+        border: none;
+        border-radius: 12px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .control-btn.primary {
+        background: var(--gradient);
+        color: white;
+    }
+
+    .control-btn.secondary {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--light);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .control-btn.danger {
+        background: rgba(255, 77, 77, 0.1);
+        color: var(--danger);
+        border: 1px solid var(--danger);
+    }
+
+    .control-btn.success {
+        background: rgba(0, 255, 157, 0.1);
+        color: var(--success);
+        border: 1px solid var(--success);
+    }
+
+    .control-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .hint-box {
+        background: rgba(10, 11, 30, 0.8);
+        border-radius: 15px;
+        padding: 20px;
+        border: 1px solid rgba(123, 63, 228, 0.3);
+    }
+
+    .hint-box h4 {
+        color: var(--secondary);
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .hint-options {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .hint-option {
+        padding: 12px 20px;
+        background: rgba(123, 63, 228, 0.1);
+        border-radius: 10px;
+        border: 1px solid rgba(123, 63, 228, 0.3);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .hint-option:hover {
+        background: rgba(123, 63, 228, 0.2);
+    }
+
+    .hint-cost {
+        color: var(--warning);
+        font-weight: 600;
+    }
+
+    .timer-container {
+        background: rgba(10, 11, 30, 0.8);
+        border-radius: 15px;
+        padding: 20px;
+        border: 1px solid rgba(123, 63, 228, 0.3);
+        text-align: center;
+    }
+
+    .timer {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 3rem;
+        color: var(--secondary);
+        margin: 10px 0;
+    }
+
+    .timer.warning {
+        color: var(--warning);
+        animation: pulse 1s infinite;
+    }
+
+    .timer.danger {
+        color: var(--danger);
+        animation: pulse 0.5s infinite;
+    }
+
+    .pencil-marks {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        right: 2px;
+        bottom: 2px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        gap: 1px;
+        pointer-events: none;
+    }
+
+    .pencil-mark {
+        font-size: 8px;
+        color: rgba(255, 255, 255, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .game-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(5, 6, 19, 0.95);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .game-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .result-card {
+        background: rgba(10, 11, 30, 0.95);
+        border-radius: 20px;
+        padding: 40px;
+        text-align: center;
+        max-width: 500px;
+        width: 90%;
+        border: 2px solid var(--primary);
+        box-shadow: 0 20px 50px rgba(123, 63, 228, 0.3);
+    }
+
+    .result-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+    }
+
+    .result-icon.success {
+        color: var(--success);
+    }
+
+    .result-icon.failure {
+        color: var(--danger);
+    }
+
+    .score-breakdown {
+        margin: 30px 0;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+    }
+
+    .score-item {
+        display: flex;
+        justify-content: space-between;
+        margin: 10px 0;
+        padding: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    @keyframes celebrate {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    .celebrate {
+        animation: celebrate 0.5s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sudoku-container">
+    <!-- Game Header -->
+    <div class="game-header">
+        <div class="game-info">
+            <h1 class="gradient-text">SUDOKU</h1>
+            <div class="venture-info">
+                <i class="fas fa-rocket me-2"></i>{{ venture.name }}
+            </div>
+        </div>
+        <div class="game-stats">
+            <div class="stat-box">
+                <div class="stat-value" id="puzzleNumber">#{{ puzzle.puzzle_number }}</div>
+                <div class="stat-label">Puzzle</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="errorsCount">0</div>
+                <div class="stat-label">Errors</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="hintsUsed">0</div>
+                <div class="stat-label">Hints</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Content -->
+    <div class="game-content">
+        <!-- Sudoku Board -->
+        <div class="sudoku-board-container">
+            <div class="sudoku-board" id="sudokuBoard">
+                <!-- Dynamically generated cells -->
+            </div>
+        </div>
+
+        <!-- Game Controls -->
+        <div class="game-controls">
+            <!-- Timer -->
+            <div class="timer-container">
+                <h4><i class="fas fa-clock me-2"></i>Time</h4>
+                <div class="timer" id="timer">00:00:00</div>
+                <small>Time bonus decreases every minute</small>
+            </div>
+
+            <!-- Number Pad -->
+            <div class="number-pad" id="numberPad">
+                <!-- Numbers 1-9 plus 0 for clear -->
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="control-buttons">
+                <button class="control-btn primary" id="checkBtn">
+                    <i class="fas fa-check me-2"></i>Check
+                </button>
+                <button class="control-btn secondary" id="hintBtn">
+                    <i class="fas fa-lightbulb me-2"></i>Hint
+                </button>
+                <button class="control-btn secondary" id="undoBtn">
+                    <i class="fas fa-undo me-2"></i>Undo
+                </button>
+                <button class="control-btn secondary" id="redoBtn">
+                    <i class="fas fa-redo me-2"></i>Redo
+                </button>
+                <button class="control-btn danger" id="resetBtn">
+                    <i class="fas fa-trash me-2"></i>Reset
+                </button>
+                <button class="control-btn success" id="solveBtn">
+                    <i class="fas fa-flag-checkered me-2"></i>Solve
+                </button>
+                <button class="control-btn secondary" id="downloadBtn">
+                    <i class="fas fa-download me-2"></i>Save
+                </button>
+                <button class="control-btn primary" id="submitBtn">
+                    <i class="fas fa-paper-plane me-2"></i>Submit
+                </button>
+            </div>
+
+            <!-- Hint Box -->
+            <div class="hint-box">
+                <h4><i class="fas fa-magic me-2"></i>Hints</h4>
+                <div class="hint-options">
+                    <div class="hint-option" onclick="useHint('reveal_cell')">
+                        <span>Reveal a cell</span>
+                        <span class="hint-cost">-10 pts</span>
+                    </div>
+                    <div class="hint-option" onclick="useHint('eliminate_option')">
+                        <span>Eliminate options</span>
+                        <span class="hint-cost">-5 pts</span>
+                    </div>
+                    <div class="hint-option" onclick="useHint('check_errors')">
+                        <span>Check for errors</span>
+                        <span class="hint-cost">-3 pts</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Game Overlay (Results) -->
+<div class="game-overlay" id="resultOverlay">
+    <div class="result-card">
+        <div class="result-icon success" id="resultIcon">
+            <i class="fas fa-trophy"></i>
+        </div>
+        <h2 class="gradient-text" id="resultTitle">Puzzle Solved!</h2>
+        <p id="resultMessage">Congratulations! You've successfully completed the puzzle.</p>
+        
+        <div class="score-breakdown">
+            <div class="score-item">
+                <span>Base Score:</span>
+                <span id="baseScore">100</span>
+            </div>
+            <div class="score-item">
+                <span>Time Bonus:</span>
+                <span id="timeBonus">+50</span>
+            </div>
+            <div class="score-item">
+                <span>Hints Used:</span>
+                <span id="hintsPenalty">-0</span>
+            </div>
+            <div class="score-item">
+                <span>Errors Made:</span>
+                <span id="errorsPenalty">-0</span>
+            </div>
+            <div class="score-item" style="border-top: 2px solid var(--primary); padding-top: 15px; font-weight: bold;">
+                <span>Total Score:</span>
+                <span id="totalScore" style="color: var(--secondary);">150</span>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-3 mt-4">
+            <button class="btn-gradient" onclick="nextPuzzle()">
+                <i class="fas fa-arrow-right me-2"></i>Next Puzzle
+            </button>
+            <button class="btn-outline-gradient" onclick="window.location='{% url 'game_hub' venture_id=venture.id %}'">
+                <i class="fas fa-home me-2"></i>Back to Game Hub
+            </button>
+            <button class="btn-outline-gradient" onclick="downloadCertificate()">
+                <i class="fas fa-award me-2"></i>Download Certificate
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const puzzleData = {{ puzzle_data|safe }};
+    const solutionData = {{ solution_data|safe }};
+    const sessionId = {{ session_id }};
+    const timeLimit = {{ time_limit }};
+    
+    let selectedCell = null;
+    let gameState = JSON.parse(JSON.stringify(puzzleData));
+    let history = [];
+    let future = [];
+    let startTime = new Date();
+    let timerInterval;
+    let errors = 0;
+    let hints = 0;
+    let isSolved = false;
+    let pencilMode = false;
+
+    // Initialize game
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeBoard();
+        initializeNumberPad();
+        startTimer();
+        loadGameState();
+        
+        // Keyboard support
+        document.addEventListener('keydown', handleKeyPress);
+    });
+
+    function initializeBoard() {
+        const board = document.getElementById('sudokuBoard');
+        board.innerHTML = '';
+        
+        const size = Math.sqrt(puzzleData.length);
+        board.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+        board.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+        
+        for (let i = 0; i < puzzleData.length; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'sudoku-cell';
+            cell.dataset.index = i;
+            cell.dataset.row = Math.floor(i / size);
+            cell.dataset.col = i % size;
+            
+            if (puzzleData[i] !== 0) {
+                cell.classList.add('given');
+                cell.textContent = puzzleData[i];
+            } else {
+                cell.classList.add('user-filled');
+                cell.textContent = gameState[i] !== 0 ? gameState[i] : '';
+                
+                // Add pencil marks container
+                const pencilMarks = document.createElement('div');
+                pencilMarks.className = 'pencil-marks';
+                pencilMarks.id = `pencil-${i}`;
+                cell.appendChild(pencilMarks);
+            }
+            
+            cell.onclick = () => selectCell(i);
+            board.appendChild(cell);
+        }
+    }
+
+    function selectCell(index) {
+        if (isSolved) return;
+        
+        // Deselect previous cell
+        if (selectedCell !== null) {
+            document.querySelector(`[data-index="${selectedCell}"]`).classList.remove('selected');
+            // Remove highlight from same row/col/box
+            removeHighlights();
+        }
+        
+        selectedCell = index;
+        const cell = document.querySelector(`[data-index="${index}"]`);
+        cell.classList.add('selected');
+        
+        // Highlight same row, column, and box
+        highlightRelatedCells(index);
+        
+        // Update number pad active state
+        updateNumberPad();
+    }
+
+    function highlightRelatedCells(index) {
+        const size = Math.sqrt(puzzleData.length);
+        const row = Math.floor(index / size);
+        const col = index % size;
+        const boxSize = Math.sqrt(size);
+        const boxRow = Math.floor(row / boxSize);
+        const boxCol = Math.floor(col / boxSize);
+        
+        document.querySelectorAll('.sudoku-cell').forEach(cell => {
+            const cellRow = parseInt(cell.dataset.row);
+            const cellCol = parseInt(cell.dataset.col);
+            const cellBoxRow = Math.floor(cellRow / boxSize);
+            const cellBoxCol = Math.floor(cellCol / boxSize);
+            
+            if (cellRow === row || cellCol === col || 
+                (cellBoxRow === boxRow && cellBoxCol === boxCol)) {
+                cell.classList.add('highlighted');
+            }
+        });
+    }
+
+    function removeHighlights() {
+        document.querySelectorAll('.sudoku-cell').forEach(cell => {
+            cell.classList.remove('highlighted');
+        });
+    }
+
+    function initializeNumberPad() {
+        const pad = document.getElementById('numberPad');
+        pad.innerHTML = '';
+        
+        const size = Math.sqrt(puzzleData.length);
+        
+        // Numbers 1 to size
+        for (let i = 1; i <= size; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'number-btn';
+            btn.textContent = i;
+            btn.onclick = () => fillNumber(i);
+            pad.appendChild(btn);
+        }
+        
+        // Clear button
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'number-btn';
+        clearBtn.innerHTML = '<i class="fas fa-eraser"></i>';
+        clearBtn.onclick = () => fillNumber(0);
+        pad.appendChild(clearBtn);
+        
+        // Pencil mode toggle
+        const pencilBtn = document.createElement('button');
+        pencilBtn.className = 'number-btn';
+        pencilBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+        pencilBtn.onclick = togglePencilMode;
+        pencilBtn.id = 'pencilBtn';
+        pad.appendChild(pencilBtn);
+    }
+
+    function updateNumberPad() {
+        document.querySelectorAll('.number-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        if (selectedCell !== null && gameState[selectedCell] !== 0) {
+            const activeBtn = document.querySelector(`.number-btn:nth-child(${gameState[selectedCell]})`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+        
+        const pencilBtn = document.getElementById('pencilBtn');
+        if (pencilMode) {
+            pencilBtn.classList.add('active');
+            pencilBtn.style.background = 'var(--gradient)';
+        }
+    }
+
+    function fillNumber(num) {
+        if (selectedCell === null || isSolved) return;
+        
+        const cell = document.querySelector(`[data-index="${selectedCell}"]`);
+        if (cell.classList.contains('given')) return;
+        
+        // Save to history
+        saveToHistory();
+        
+        if (pencilMode) {
+            // Add/remove pencil mark
+            togglePencilMark(num);
+        } else {
+            // Fill number
+            gameState[selectedCell] = num;
+            cell.textContent = num !== 0 ? num : '';
+            
+            // Check for errors
+            if (num !== 0 && solutionData[selectedCell] !== num) {
+                cell.classList.add('error');
+                errors++;
+                document.getElementById('errorsCount').textContent = errors;
+                
+                // Show error animation
+                cell.style.animation = 'none';
+                setTimeout(() => {
+                    cell.style.animation = 'pulse 0.5s ease';
+                }, 10);
+            } else {
+                cell.classList.remove('error');
+            }
+            
+            // Check if solved
+            if (JSON.stringify(gameState) === JSON.stringify(solutionData)) {
+                completePuzzle();
+            }
+        }
+        
+        updateNumberPad();
+    }
+
+    function togglePencilMark(num) {
+        const pencilDiv = document.getElementById(`pencil-${selectedCell}`);
+        if (!pencilDiv) return;
+        
+        const marks = pencilDiv.querySelectorAll('.pencil-mark');
+        let existingMark = null;
+        
+        marks.forEach(mark => {
+            if (mark.textContent == num) {
+                existingMark = mark;
+            }
+        });
+        
+        if (existingMark) {
+            existingMark.remove();
+        } else {
+            const mark = document.createElement('div');
+            mark.className = 'pencil-mark';
+            mark.textContent = num;
+            pencilDiv.appendChild(mark);
+        }
+    }
+
+    function togglePencilMode() {
+        pencilMode = !pencilMode;
+        const btn = document.getElementById('pencilBtn');
+        
+        if (pencilMode) {
+            btn.style.background = 'var(--gradient)';
+            btn.classList.add('active');
+        } else {
+            btn.style.background = '';
+            btn.classList.remove('active');
+        }
+    }
+
+    function saveToHistory() {
+        history.push(JSON.parse(JSON.stringify(gameState)));
+        future = []; // Clear redo history
+    }
+
+    function undo() {
+        if (history.length === 0 || isSolved) return;
+        
+        future.push(JSON.parse(JSON.stringify(gameState)));
+        gameState = history.pop();
+        updateBoardFromState();
+    }
+
+    function redo() {
+        if (future.length === 0 || isSolved) return;
+        
+        history.push(JSON.parse(JSON.stringify(gameState)));
+        gameState = future.pop();
+        updateBoardFromState();
+    }
+
+    function updateBoardFromState() {
+        const cells = document.querySelectorAll('.sudoku-cell');
+        cells.forEach((cell, index) => {
+            if (!cell.classList.contains('given')) {
+                cell.textContent = gameState[index] !== 0 ? gameState[index] : '';
+                
+                // Update error state
+                if (gameState[index] !== 0 && solutionData[index] !== gameState[index]) {
+                    cell.classList.add('error');
+                } else {
+                    cell.classList.remove('error');
+                }
+            }
+        });
+        
+        // Update errors count
+        errors = gameState.reduce((count, val, idx) => {
+            return count + (val !== 0 && solutionData[idx] !== val ? 1 : 0);
+        }, 0);
+        document.getElementById('errorsCount').textContent = errors;
+    }
+
+    function startTimer() {
+        startTime = new Date();
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+        const now = new Date();
+        const diff = Math.floor((now - startTime) / 1000);
+        
+        const hours = Math.floor(diff / 3600);
+        const minutes = Math.floor((diff % 3600) / 60);
+        const seconds = diff % 60;
+        
+        const timer = document.getElementById('timer');
+        timer.textContent = 
+            `${hours.toString().padStart(2, '0')}:` +
+            `${minutes.toString().padStart(2, '0')}:` +
+            `${seconds.toString().padStart(2, '0')}`;
+        
+        // Warning colors
+        if (diff > timeLimit * 0.75) {
+            timer.classList.add('warning');
+        }
+        if (diff > timeLimit * 0.9) {
+            timer.classList.add('danger');
+            timer.classList.remove('warning');
+        }
+    }
+
+    function checkSolution() {
+        let isValid = true;
+        const cells = document.querySelectorAll('.sudoku-cell');
+        
+        cells.forEach((cell, index) => {
+            if (!cell.classList.contains('given')) {
+                if (gameState[index] !== solutionData[index]) {
+                    cell.classList.add('error');
+                    isValid = false;
+                } else {
+                    cell.classList.remove('error');
+                }
+            }
+        });
+        
+        return isValid;
+    }
+
+    function useHint(type) {
+        if (isSolved) return;
+        
+        hints++;
+        document.getElementById('hintsUsed').textContent = hints;
+        
+        // Make API call to use hint
+        fetch(`/api/games/hint/${sessionId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ hint_type: type })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (type === 'reveal_cell' && data.cell_index !== undefined) {
+                    revealCell(data.cell_index, data.value);
+                }
+                showAlert('Hint applied successfully!', 'success');
+            }
+        });
+    }
+
+    function revealCell(index, value) {
+        saveToHistory();
+        gameState[index] = value;
+        
+        const cell = document.querySelector(`[data-index="${index}"]`);
+        cell.textContent = value;
+        cell.classList.add('hint');
+        
+        setTimeout(() => cell.classList.remove('hint'), 2000);
+    }
+
+    function completePuzzle() {
+        isSolved = true;
+        clearInterval(timerInterval);
+        
+        // Calculate score
+        const timeSpent = Math.floor((new Date() - startTime) / 1000);
+        const baseScore = {{ base_points }};
+        const timeBonus = Math.max(0, Math.floor((timeLimit - timeSpent) / 60) * 10);
+        const hintsPenalty = hints * 10;
+        const errorsPenalty = errors * 5;
+        const totalScore = baseScore + timeBonus - hintsPenalty - errorsPenalty;
+        
+        // Update result display
+        document.getElementById('baseScore').textContent = baseScore;
+        document.getElementById('timeBonus').textContent = `+${timeBonus}`;
+        document.getElementById('hintsPenalty').textContent = `-${hintsPenalty}`;
+        document.getElementById('errorsPenalty').textContent = `-${errorsPenalty}`;
+        document.getElementById('totalScore').textContent = totalScore;
+        
+        // Submit to server
+        submitSolution(totalScore, timeSpent);
+        
+        // Show result overlay
+        setTimeout(() => {
+            document.getElementById('resultOverlay').classList.add('show');
+        }, 1000);
+    }
+
+    function submitSolution(score, timeSpent) {
+        fetch(`/api/games/submit/${sessionId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                solution: gameState,
+                time_spent: timeSpent,
+                hints_used: hints,
+                errors_made: errors,
+                score: score
+            })
+        });
+    }
+
+    function downloadGame() {
+        const gameData = {
+            puzzle: puzzleData,
+            solution: solutionData,
+            state: gameState,
+            timestamp: new Date().toISOString(),
+            session_id: sessionId
+        };
+        
+        const blob = new Blob([JSON.stringify(gameData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sudoku_${venture.name}_${puzzle.puzzle_number}.json`;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function loadGameState() {
+        const saved = localStorage.getItem(`sudoku_session_${sessionId}`);
+        if (saved) {
+            const data = JSON.parse(saved);
+            gameState = data.state || gameState;
+            history = data.history || [];
+            future = data.future || [];
+            errors = data.errors || 0;
+            hints = data.hints || 0;
+            startTime = new Date(data.startTime) || startTime;
+            
+            updateBoardFromState();
+            document.getElementById('errorsCount').textContent = errors;
+            document.getElementById('hintsUsed').textContent = hints;
+        }
+    }
+
+    function saveGameState() {
+        const data = {
+            state: gameState,
+            history: history,
+            future: future,
+            errors: errors,
+            hints: hints,
+            startTime: startTime.toISOString()
+        };
+        localStorage.setItem(`sudoku_session_${sessionId}`, JSON.stringify(data));
+    }
+
+    // Auto-save every 30 seconds
+    setInterval(saveGameState, 30000);
+
+    // Handle keyboard input
+    function handleKeyPress(e) {
+        if (selectedCell === null) return;
+        
+        const key = e.key;
+        if (key >= '1' && key <= '9') {
+            fillNumber(parseInt(key));
+        } else if (key === '0' || key === 'Delete' || key === 'Backspace') {
+            fillNumber(0);
+        } else if (key === 'z' && e.ctrlKey) {
+            e.preventDefault();
+            undo();
+        } else if (key === 'y' && e.ctrlKey) {
+            e.preventDefault();
+            redo();
+        } else if (key === 'p' || key === 'P') {
+            e.preventDefault();
+            togglePencilMode();
+        }
+    }
+
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Button event listeners
+    document.getElementById('checkBtn').onclick = () => {
+        if (checkSolution()) {
+            showAlert('All cells are correct!', 'success');
+        } else {
+            showAlert('Some cells have errors.', 'warning');
+        }
+    };
+
+    document.getElementById('undoBtn').onclick = undo;
+    document.getElementById('redoBtn').onclick = redo;
+    document.getElementById('resetBtn').onclick = () => {
+        if (confirm('Are you sure you want to reset the puzzle?')) {
+            gameState = JSON.parse(JSON.stringify(puzzleData));
+            history = [];
+            future = [];
+            errors = 0;
+            hints = 0;
+            updateBoardFromState();
+            document.getElementById('errorsCount').textContent = 0;
+            document.getElementById('hintsUsed').textContent = 0;
+        }
+    };
+
+    document.getElementById('solveBtn').onclick = () => {
+        if (confirm('This will reveal the solution. Are you sure?')) {
+            gameState = JSON.parse(JSON.stringify(solutionData));
+            updateBoardFromState();
+            completePuzzle();
+        }
+    };
+
+    document.getElementById('downloadBtn').onclick = downloadGame;
+    document.getElementById('submitBtn').onclick = () => {
+        if (checkSolution()) {
+            completePuzzle();
+        } else {
+            showAlert('Please fix all errors before submitting.', 'warning');
+        }
+    };
+
+    // Utility functions
+    function showAlert(message, type) {
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.getElementById('alertContainer').appendChild(alert);
+        
+        setTimeout(() => alert.remove(), 5000);
+    }
+
+    function nextPuzzle() {
+        window.location.reload(); // In production, load next puzzle
+    }
+
+    function downloadCertificate() {
+        // Generate certificate PDF
+        showAlert('Certificate download started!', 'success');
+    }
+</script>
+{% endblock %}

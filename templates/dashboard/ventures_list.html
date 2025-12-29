@@ -1,0 +1,602 @@
+<!-- templates/ventures/ventures_list.html -->
+{% extends 'base.html' %}
+
+{% block title %}🎮 NEXT STAR | Ventures{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ventures-container {
+        min-height: 100vh;
+        display: flex;
+        background: var(--dark);
+    }
+
+    .ventures-main {
+        flex: 1;
+        margin-left: 280px;
+        padding: 30px;
+    }
+
+    /* Ventures Grid */
+    .ventures-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 25px;
+        margin-top: 30px;
+    }
+
+    .venture-card {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 20px;
+        padding: 25px;
+        border: 1px solid rgba(123, 63, 228, 0.2);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .venture-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+        box-shadow: 0 10px 30px rgba(123, 63, 228, 0.2);
+    }
+
+    .venture-status {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .status-funding {
+        background: rgba(0, 212, 255, 0.1);
+        color: var(--secondary);
+        border: 1px solid rgba(0, 212, 255, 0.3);
+    }
+
+    .status-active {
+        background: rgba(0, 255, 157, 0.1);
+        color: var(--success);
+        border: 1px solid rgba(0, 255, 157, 0.3);
+    }
+
+    .venture-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .venture-logo {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        background: var(--gradient);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        color: white;
+        font-weight: bold;
+    }
+
+    .venture-info h3 {
+        margin: 0;
+        color: var(--light);
+        font-size: 1.3rem;
+    }
+
+    .venture-founder {
+        color: var(--secondary);
+        font-size: 0.9rem;
+        margin-top: 5px;
+    }
+
+    .venture-description {
+        color: rgba(232, 244, 255, 0.7);
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-bottom: 20px;
+        height: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+    }
+
+    .venture-metrics {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .metric-item {
+        text-align: center;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 10px;
+    }
+
+    .metric-value {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: var(--light);
+        margin-bottom: 5px;
+    }
+
+    .metric-label {
+        color: rgba(232, 244, 255, 0.6);
+        font-size: 0.8rem;
+    }
+
+    .venture-progress {
+        margin-bottom: 20px;
+    }
+
+    .progress-text {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+        color: rgba(232, 244, 255, 0.7);
+    }
+
+    .venture-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-venture {
+        flex: 1;
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        text-align: center;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .btn-invest {
+        background: var(--gradient);
+        color: white;
+        border: none;
+    }
+
+    .btn-view {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--light);
+        border: 1px solid rgba(123, 63, 228, 0.3);
+    }
+
+    /* Filters */
+    .filters-section {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        border: 1px solid rgba(123, 63, 228, 0.1);
+    }
+
+    .filters-row {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .filter-label {
+        color: var(--light);
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+
+    .filter-select {
+        padding: 8px 15px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(123, 63, 228, 0.3);
+        border-radius: 8px;
+        color: var(--light);
+        min-width: 150px;
+    }
+
+    .search-box {
+        flex: 1;
+        max-width: 300px;
+        position: relative;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 10px 15px 10px 40px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(123, 63, 228, 0.3);
+        border-radius: 8px;
+        color: var(--light);
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--secondary);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: var(--secondary);
+        margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+        color: var(--light);
+        margin-bottom: 10px;
+    }
+
+    .empty-state p {
+        color: rgba(232, 244, 255, 0.7);
+        max-width: 400px;
+        margin: 0 auto 30px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ventures-container">
+    <!-- Sidebar -->
+    {% include 'dashboard/_sidebar.html' %}
+
+    <!-- Main Content -->
+    <div class="ventures-main">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div class="header-title">
+                <h1>Ventures</h1>
+                <p>Discover and invest in promising startups</p>
+            </div>
+            
+            <div class="header-actions">
+                {% if user.is_staff %}
+                <a href="{% url 'create_venture_page' %}" class="btn-gradient">
+                    <i class="fas fa-plus"></i> Create Venture
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-section">
+            <div class="filters-row">
+                <div class="filter-group">
+                    <span class="filter-label">Status:</span>
+                    <select class="filter-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="funding">Funding</option>
+                        <option value="active">Active</option>
+                        <option value="funded">Funded</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <span class="filter-label">Sort By:</span>
+                    <select class="filter-select" id="sortFilter">
+                        <option value="newest">Newest First</option>
+                        <option value="funding">Funding Progress</option>
+                        <option value="tickets">Tickets Sold</option>
+                    </select>
+                </div>
+                
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search ventures..." id="searchInput">
+                </div>
+            </div>
+        </div>
+
+        <!-- Ventures Grid -->
+        <div class="ventures-grid" id="venturesGrid">
+            {% for venture in ventures %}
+            <div class="venture-card" onclick="window.location.href='{% url 'venture_detail' venture.slug %}'">
+                <div class="venture-status status-{{ venture.status }}">
+                    {{ venture.get_status_display }}
+                </div>
+                
+                <div class="venture-header">
+                    <div class="venture-logo">
+                        {{ venture.name|first }}
+                    </div>
+                    <div class="venture-info">
+                        <h3>{{ venture.name }}</h3>
+                        <div class="venture-founder">
+                            <i class="fas fa-user"></i> {{ venture.founder.get_full_name }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="venture-description">
+                    {{ venture.description|truncatewords:30 }}
+                </div>
+                
+                <div class="venture-metrics">
+                    <div class="metric-item">
+                        <div class="metric-value">${{ venture.funding_goal }}</div>
+                        <div class="metric-label">Goal</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">{{ venture.funding_percentage|floatformat:1 }}%</div>
+                        <div class="metric-label">Funded</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">{{ venture.tickets_sold }}/{{ venture.max_tickets }}</div>
+                        <div class="metric-label">Tickets</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">${{ venture.ticket_price }}</div>
+                        <div class="metric-label">Per Ticket</div>
+                    </div>
+                </div>
+                
+                <div class="venture-progress">
+                    <div class="progress-text">
+                        <span>Time Remaining</span>
+                        <span>
+                            {% if venture.is_funding_active %}
+                            {{ venture.funding_end|timeuntil }}
+                            {% else %}
+                            {% if venture.status == 'funding' %}Not started{% else %}Completed{% endif %}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ venture.funding_percentage }}%"></div>
+                    </div>
+                </div>
+                
+                <div class="venture-actions">
+                    <a href="{% url 'venture_detail' venture.slug %}" class="btn-view btn-venture">
+                        <i class="fas fa-eye"></i> View
+                    </a>
+                    {% if venture.is_funding_active and venture.tickets_available %}
+                    <button class="btn-invest btn-venture" onclick="event.stopPropagation(); investInVenture('{{ venture.slug }}')">
+                        <i class="fas fa-coins"></i> Invest
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state" style="grid-column: 1 / -1;">
+                <i class="fas fa-rocket"></i>
+                <h3>No Ventures Available</h3>
+                <p>There are no ventures available for investment at the moment.</p>
+                {% if user.is_staff %}
+                <a href="{% url 'create_venture_page' %}" class="btn-gradient">
+                    <i class="fas fa-plus"></i> Create First Venture
+                </a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div style="margin-top: 40px; text-align: center;">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                    {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Investment Modal -->
+<div class="modal fade" id="investmentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalVentureName">Invest in Venture</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="investmentContent">
+                    <!-- Dynamic content loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Filter functionality
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        filterVentures();
+    });
+    
+    document.getElementById('sortFilter').addEventListener('change', function() {
+        filterVentures();
+    });
+    
+    document.getElementById('searchInput').addEventListener('input', function() {
+        filterVentures();
+    });
+    
+    function filterVentures() {
+        const status = document.getElementById('statusFilter').value;
+        const sort = document.getElementById('sortFilter').value;
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        
+        // Get all venture cards
+        const ventureCards = document.querySelectorAll('.venture-card');
+        let visibleCount = 0;
+        
+        ventureCards.forEach(card => {
+            const ventureStatus = card.querySelector('.venture-status').textContent.toLowerCase();
+            const ventureName = card.querySelector('h3').textContent.toLowerCase();
+            const ventureDesc = card.querySelector('.venture-description').textContent.toLowerCase();
+            
+            // Apply filters
+            let shouldShow = true;
+            
+            // Status filter
+            if (status && !ventureStatus.includes(status.toLowerCase())) {
+                shouldShow = false;
+            }
+            
+            // Search filter
+            if (search && !ventureName.includes(search) && !ventureDesc.includes(search)) {
+                shouldShow = false;
+            }
+            
+            // Show/hide card
+            card.style.display = shouldShow ? 'block' : 'none';
+            if (shouldShow) visibleCount++;
+        });
+        
+        // Show empty state if no ventures visible
+        const emptyState = document.querySelector('.empty-state');
+        const grid = document.getElementById('venturesGrid');
+        
+        if (visibleCount === 0) {
+            if (!emptyState) {
+                const emptyHtml = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <i class="fas fa-search"></i>
+                        <h3>No Ventures Found</h3>
+                        <p>No ventures match your search criteria.</p>
+                        <button class="btn-outline-gradient" onclick="clearFilters()">
+                            Clear Filters
+                        </button>
+                    </div>
+                `;
+                grid.innerHTML = emptyHtml;
+            }
+        } else if (emptyState) {
+            emptyState.remove();
+        }
+    }
+    
+    function clearFilters() {
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('sortFilter').value = 'newest';
+        document.getElementById('searchInput').value = '';
+        filterVentures();
+        location.reload(); // Reload to show all ventures
+    }
+    
+    // Investment functionality
+    function investInVenture(ventureSlug) {
+        fetch(`/api/ventures/${ventureSlug}/invest/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.can_invest) {
+                    // Show investment modal
+                    showInvestmentModal(ventureSlug, data);
+                } else {
+                    alert(data.message);
+                }
+            });
+    }
+    
+    function showInvestmentModal(ventureSlug, data) {
+        const modal = new bootstrap.Modal(document.getElementById('investmentModal'));
+        const content = document.getElementById('investmentContent');
+        
+        content.innerHTML = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <i class="fas fa-coins" style="font-size: 3rem; color: var(--primary);"></i>
+                <h4 style="color: var(--light); margin-top: 15px;">Invest in ${data.venture_name}</h4>
+            </div>
+            
+            <div class="form-group">
+                <label style="color: var(--light); margin-bottom: 10px; display: block;">
+                    Ticket Price: <strong>$${data.ticket_price}</strong>
+                </label>
+                <label style="color: var(--light); margin-bottom: 15px; display: block;">
+                    Equity per ticket: <strong>${data.equity_percentage}%</strong>
+                </label>
+            </div>
+            
+            <div style="background: rgba(123, 63, 228, 0.1); padding: 15px; border-radius: 10px; margin: 20px 0;">
+                <p style="color: var(--light); margin: 0;">
+                    <i class="fas fa-info-circle"></i> 
+                    You will receive 1 NFT ticket granting you ${data.equity_percentage}% equity in the venture.
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button type="button" class="btn-outline-gradient" style="flex: 1;" data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <button type="button" class="btn-gradient" style="flex: 1;" onclick="confirmInvestment('${ventureSlug}')">
+                    <i class="fas fa-check"></i> Confirm
+                </button>
+            </div>
+        `;
+        
+        modal.show();
+    }
+    
+    function confirmInvestment(ventureSlug) {
+        fetch(`/api/ventures/${ventureSlug}/invest/confirm/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Investment successful! NFT ticket has been issued to your wallet.');
+                bootstrap.Modal.getInstance(document.getElementById('investmentModal')).hide();
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+    }
+</script>
+{% endblock %}

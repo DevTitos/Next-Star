@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}🌠 Leaderboard | {{ venture.name }} | NEXT STAR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .leaderboard-filters {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+    
+    .filter-btn {
+        padding: 10px 25px;
+        border-radius: 25px;
+        background: rgba(123, 63, 228, 0.1);
+        border: 1px solid rgba(123, 63, 228, 0.3);
+        color: var(--light);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .filter-btn.active {
+        background: var(--gradient);
+        color: white;
+        border-color: transparent;
+    }
+    
+    .time-filter {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .time-btn {
+        padding: 8px 15px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--light);
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+    
+    .time-btn.active {
+        background: rgba(0, 212, 255, 0.2);
+        border-color: var(--secondary);
+        color: var(--secondary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="game-hub-container">
+    <div class="header-section">
+        <div class="venture-badge">
+            <i class="fas fa-rocket me-2"></i>{{ venture.name }}
+        </div>
+        <h1>LEADERBOARD</h1>
+        <p class="lead">Compete with other players to reach the top</p>
+    </div>
+    
+    <!-- Filters -->
+    <div class="leaderboard-filters">
+        <div class="time-filter">
+            <span>Time Period:</span>
+            <button class="time-btn active" onclick="filterByTime('all')">All Time</button>
+            <button class="time-btn" onclick="filterByTime('week')">This Week</button>
+            <button class="time-btn" onclick="filterByTime('month')">This Month</button>
+            <button class="time-btn" onclick="filterByTime('today')">Today</button>
+        </div>
+        
+        <div>
+            <button class="filter-btn active" onclick="filterByGame('all')">All Games</button>
+            <button class="filter-btn" onclick="filterByGame('sudoku')">Sudoku</button>
+            <button class="filter-btn" onclick="filterByGame('kakuro')">Kakuro</button>
+            <button class="filter-btn" onclick="filterByGame('cryptogram')">Cryptogram</button>
+        </div>
+        
+        <div>
+            <button class="filter-btn" onclick="downloadLeaderboard()">
+                <i class="fas fa-download me-2"></i>Export CSV
+            </button>
+        </div>
+    </div>
+    
+    <!-- Leaderboard Tables -->
+    <div id="allGamesTable">
+        <!-- Combined leaderboard -->
+    </div>
+    
+    <div id="sudokuTable" style="display: none;">
+        <!-- Sudoku-specific leaderboard -->
+    </div>
+    
+    <!-- Player Stats Card -->
+    {% if user_stats %}
+    <div class="player-stats-card">
+        <h3 class="gradient-text">Your Stats</h3>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Global Rank</div>
+                <div class="stat-value">#{{ user_stats.rank }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Score</div>
+                <div class="stat-value">{{ user_stats.total_score }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Games Completed</div>
+                <div class="stat-value">{{ user_stats.completed_games }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg Time</div>
+                <div class="stat-value">{{ user_stats.avg_time|floatformat:1 }}s</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Achievement Badges -->
+    <div class="achievements-section">
+        <h3 class="gradient-text">Achievements</h3>
+        <div class="badges-grid">
+            <!-- Display achievement badges -->
+        </div>
+    </div>
+</div>
+{% endblock %}

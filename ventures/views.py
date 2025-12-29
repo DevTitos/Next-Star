@@ -25,6 +25,291 @@ from hiero_sdk_python import (
 
 logger = logging.getLogger(__name__)
 
+from django.core.paginator import Paginator
+from django.db.models import Sum, Count
+
+@login_required
+def dashboard(request):
+    """Updated dashboard view without games"""
+    from core.models import UserWallet
+    from ventures.models import Venture, VentureTicket, VentureOwnership
+    
+    # Get user's wallet data
+    try:
+        wallet = UserWallet.objects.get(user=request.user)
+        star_balance = get_balance(wallet.recipient_id)
+    except:
+        star_balance = 0
+    
+    # Get user's ventures and tickets
+    user_ventures = Venture.objects.filter(ownerships__owner=request.user).distinct()
+    owned_tickets = VentureTicket.objects.filter(buyer=request.user, status='purchased')
+    
+    # Calculate user stats
+    total_invested = VentureOwnership.objects.filter(
+        owner=request.user
+    ).aggregate(total=Sum('investment_amount'))['total'] or 0
+    
+    equity_total = VentureOwnership.objects.filter(
+        owner=request.user
+    ).aggregate(total=Sum('equity_percentage'))['total'] or 0
+    
+    # Active ventures for funding
+    active_ventures = Venture.objects.filter(
+        status='funding',
+        funding_end__gte=timezone.now(),
+        funding_start__lte=timezone.now()
+    ).order_by('-created_at')[:3]
+    
+    context = {
+        'user_stats': {
+            'total_invested': total_invested,
+            'ventures_count': user_ventures.count(),
+            'equity_total': equity_total,
+            'portfolio_value': total_invested * 1.2,  # Simplified calculation
+        },
+        'wallet_data': {
+            'star_tokens': star_balance,
+            'tickets': owned_tickets.count(),
+        },
+        'user_ventures': user_ventures[:3],
+        'owned_tickets': owned_tickets,
+        'active_ventures': active_ventures,
+        'today': timezone.now(),
+    }
+    return render(request, 'dashboard/dashboard.html', context)
+
+@login_required
+def ventures_list(request):
+    """List all ventures with filters"""
+    from ventures.models import Venture, VentureOwnership
+    
+    ventures = Venture.objects.filter(status__in=['funding', 'active']).order_by('-created_at')
+    
+    # Apply filters
+    status_filter = request.GET.get('status')
+    if status_filter:
+        ventures = ventures.filter(status=status_filter)
+    
+    search_query = request.GET.get('search')
+    if search_query:
+        ventures = ventures.filter(name__icontains=search_query)
+    
+    # Pagination
+    paginator = Paginator(ventures, 12)  # 12 ventures per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Get user's investments for quick reference
+    user_investments = VentureOwnership.objects.filter(owner=request.user)
+    invested_venture_ids = user_investments.values_list('venture_id', flat=True)
+    
+    context = {
+        'ventures': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'user_investments': list(invested_venture_ids),
+        'today': timezone.now(),
+    }
+    return render(request, 'ventures/ventures_list.html', context)
+
+@login_required
+def venture_detail(request, slug):
+    """Detailed venture view with investor leaderboard"""
+    from ventures.models import Venture, VentureTicket, VentureOwnership
+    
+    venture = get_object_or_404(Venture, slug=slug)
+    
+    # Check if user has already purchased a ticket
+    has_ticket = VentureTicket.objects.filter(
+        venture=venture,
+        buyer=request.user,
+        status='purchased'
+    ).exists()
+    
+    user_ticket = None
+    if has_ticket:
+        user_ticket = VentureTicket.objects.get(
+            venture=venture,
+            buyer=request.user,
+            status='purchased'
+        )
+    
+    # Get investor leaderboard
+    ownerships = VentureOwnership.objects.filter(venture=venture).select_related('owner')
+    
+    # Process investor data for display
+    investors_data = []
+    for ownership in ownerships:
+        # Count tickets for this user
+        ticket_count = VentureTicket.objects.filter(
+            venture=venture,
+            buyer=ownership.owner,
+            status='purchased'
+        ).count()
+        
+        investors_data.append({
+            'user': ownership.owner,
+            'tickets': ticket_count,
+            'investment': ownership.investment_amount,
+            'equity': ownership.equity_percentage,
+            'joined_date': ownership.acquired_at,
+        })
+    
+    # Sort by investment amount (descending)
+    investors_data.sort(key=lambda x: x['investment'], reverse=True)
+    
+    # Get timeline data
+    timeline_data = {
+        'first_investment_date': None,
+        'first_investment_amount': None,
+        'funding_complete_date': None,
+    }
+    
+    if ownerships.exists():
+        first_investment = ownerships.order_by('acquired_at').first()
+        timeline_data['first_investment_date'] = first_investment.acquired_at
+        timeline_data['first_investment_amount'] = first_investment.investment_amount
+    
+    if venture.status == 'funded':
+        last_investment = ownerships.order_by('-acquired_at').first()
+        timeline_data['funding_complete_date'] = last_investment.acquired_at
+    
+    context = {
+        'venture': venture,
+        'has_ticket': has_ticket,
+        'user_ticket': user_ticket,
+        'investors': investors_data,
+        'timeline_data': timeline_data,
+        'today': timezone.now(),
+    }
+    return render(request, 'ventures/venture_detail.html', context)
+
+# API Views for AJAX calls
+@login_required
+@require_http_methods(["GET"])
+def api_check_investment(request, slug):
+    """API endpoint to check if user can invest in venture"""
+    from ventures.models import Venture, VentureTicket
+    
+    venture = get_object_or_404(Venture, slug=slug)
+    
+    # Check investment conditions
+    can_invest, message = venture.can_user_buy_ticket(request.user)
+    
+    if not can_invest:
+        return JsonResponse({
+            'can_invest': False,
+            'message': message
+        })
+    
+    # Check user balance
+    from core.models import UserWallet
+    try:
+        wallet = UserWallet.objects.get(user=request.user)
+        star_balance = get_balance(wallet.recipient_id)
+    except:
+        star_balance = 0
+    
+    if star_balance < float(venture.ticket_price):
+        return JsonResponse({
+            'can_invest': False,
+            'message': f"Insufficient STAR tokens. Need {venture.ticket_price}, have {star_balance}"
+        })
+    
+    # Get next ticket number
+    last_ticket = VentureTicket.objects.filter(venture=venture).order_by('-ticket_number').first()
+    next_ticket_number = (last_ticket.ticket_number + 1) if last_ticket else 1
+    
+    return JsonResponse({
+        'can_invest': True,
+        'venture_name': venture.name,
+        'ticket_price': float(venture.ticket_price),
+        'equity_percentage': float(venture.equity_per_ticket),
+        'next_ticket_number': next_ticket_number,
+        'equity_remaining': 100 - (venture.tickets_sold * venture.equity_per_ticket),
+    })
+
+@login_required
+@require_http_methods(["GET"])
+def api_get_investors(request, slug):
+    """API endpoint to get investor list"""
+    from ventures.models import Venture, VentureOwnership
+    
+    venture = get_object_or_404(Venture, slug=slug)
+    page = int(request.GET.get('page', 1))
+    limit = int(request.GET.get('limit', 20))
+    
+    ownerships = VentureOwnership.objects.filter(
+        venture=venture
+    ).select_related('owner').order_by('-investment_amount')
+    
+    # Pagination
+    paginator = Paginator(ownerships, limit)
+    page_obj = paginator.get_page(page)
+    
+    investors_data = []
+    for ownership in page_obj:
+        investors_data.append({
+            'id': ownership.owner.id,
+            'name': ownership.owner.get_full_name(),
+            'username': ownership.owner.username,
+            'investment': float(ownership.investment_amount),
+            'equity': float(ownership.equity_percentage),
+            'joined_date': ownership.acquired_at.isoformat(),
+            'is_current_user': (ownership.owner == request.user),
+        })
+    
+    return JsonResponse({
+        'investors': investors_data,
+        'total': paginator.count,
+        'pages': paginator.num_pages,
+        'current_page': page,
+    })
+
+@login_required
+@require_http_methods(["POST"])
+def api_purchase_ticket(request, slug):
+    """API endpoint to purchase ticket (calls existing buy_venture_ticket)"""
+    # This will redirect to your existing buy_venture_ticket function
+    # We need to adapt it for web vs JSON response
+    venture = get_object_or_404(Venture, slug=slug)
+    
+    # Call your existing function
+    response = buy_venture_ticket(request, venture.id)
+    
+    # Ensure it returns proper JSON
+    if hasattr(response, 'content'):
+        return response
+    
+    # Fallback response
+    return JsonResponse({
+        'success': False,
+        'error': 'Purchase failed'
+    })
+
+@login_required
+@require_http_methods(["GET"])
+def api_wallet_balance(request):
+    """API endpoint to get user's STAR balance"""
+    from core.models import UserWallet
+    
+    try:
+        wallet = UserWallet.objects.get(user=request.user)
+        star_balance = get_balance(wallet.recipient_id)
+        
+        return JsonResponse({
+            'success': True,
+            'balance': star_balance,
+            'address': wallet.recipient_id,
+        })
+    except Exception as e:
+        logger.error(f"Balance check error: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'balance': 0,
+        })
 @login_required
 @require_http_methods(["POST"])
 def buy_venture_ticket(request, venture_id):

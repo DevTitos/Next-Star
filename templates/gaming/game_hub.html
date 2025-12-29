@@ -1,0 +1,525 @@
+{% extends 'base.html' %}
+
+{% block title %}🌠 Game Hub | NEXT STAR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .game-hub-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    .header-section {
+        text-align: center;
+        margin-bottom: 60px;
+        position: relative;
+    }
+
+    .header-section h1 {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        background: var(--afro-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 10px 30px rgba(123, 63, 228, 0.3);
+    }
+
+    .venture-badge {
+        display: inline-block;
+        background: var(--gradient);
+        color: white;
+        padding: 10px 30px;
+        border-radius: 50px;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+    }
+
+    .game-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 30px;
+        margin-bottom: 60px;
+    }
+
+    .game-card {
+        background: rgba(10, 11, 30, 0.8);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        border: 2px solid transparent;
+        padding: 30px;
+        text-align: center;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+    }
+
+    .game-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 20px;
+        padding: 2px;
+        background: var(--gradient);
+        -webkit-mask: 
+            linear-gradient(#fff 0 0) content-box, 
+            linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .game-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 40px rgba(123, 63, 228, 0.2);
+    }
+
+    .game-card:hover::before {
+        opacity: 1;
+    }
+
+    .game-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+        height: 80px;
+    }
+
+    .game-card.sudoku .game-icon {
+        background: linear-gradient(135deg, #7B3FE4, #00D4FF);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .game-card.kakuro .game-icon {
+        background: linear-gradient(135deg, #FF4DE8, #00D4FF);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .game-card.cryptogram .game-icon {
+        background: linear-gradient(135deg, #00FF9D, #7B3FE4);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .game-card h3 {
+        font-size: 1.8rem;
+        margin-bottom: 10px;
+    }
+
+    .game-stats {
+        display: flex;
+        justify-content: space-around;
+        margin: 20px 0;
+        padding: 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+    }
+
+    .stat {
+        text-align: center;
+    }
+
+    .stat-value {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-top: 5px;
+    }
+
+    .difficulty-indicator {
+        display: inline-block;
+        padding: 6px 15px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin: 10px 0;
+    }
+
+    .difficulty-easy {
+        background: rgba(0, 255, 157, 0.1);
+        color: var(--success);
+        border: 1px solid var(--success);
+    }
+
+    .difficulty-medium {
+        background: rgba(255, 183, 77, 0.1);
+        color: var(--warning);
+        border: 1px solid var(--warning);
+    }
+
+    .difficulty-hard {
+        background: rgba(255, 77, 77, 0.1);
+        color: var(--danger);
+        border: 1px solid var(--danger);
+    }
+
+    .difficulty-expert {
+        background: rgba(123, 63, 228, 0.1);
+        color: var(--primary);
+        border: 1px solid var(--primary);
+    }
+
+    .game-progress {
+        margin: 20px 0;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: var(--gradient);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .progress-text {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .game-actions {
+        display: flex;
+        gap: 15px;
+        margin-top: 25px;
+    }
+
+    .action-btn {
+        flex: 1;
+        padding: 12px;
+        border-radius: 12px;
+        border: none;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .action-btn.play {
+        background: var(--gradient);
+        color: white;
+    }
+
+    .action-btn.download {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--light);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .leaderboard-section {
+        background: rgba(10, 11, 30, 0.8);
+        border-radius: 20px;
+        padding: 40px;
+        margin-top: 60px;
+        border: 1px solid rgba(123, 63, 228, 0.3);
+    }
+
+    .leaderboard-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+    .leaderboard-table th {
+        text-align: left;
+        padding: 15px;
+        background: rgba(123, 63, 228, 0.1);
+        color: var(--secondary);
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 600;
+    }
+
+    .leaderboard-table td {
+        padding: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .leaderboard-table tr:hover {
+        background: rgba(123, 63, 228, 0.05);
+    }
+
+    .rank {
+        width: 50px;
+        text-align: center;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+    }
+
+    .rank-1 { color: #FFD700; }
+    .rank-2 { color: #C0C0C0; }
+    .rank-3 { color: #CD7F32; }
+
+    .player-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .player-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--gradient);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+
+    .completion-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: rgba(0, 255, 157, 0.1);
+        color: var(--success);
+        border: 1px solid var(--success);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    .empty-state i {
+        font-size: 64px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    @media (max-width: 768px) {
+        .game-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .game-actions {
+            flex-direction: column;
+        }
+        
+        .header-section h1 {
+            font-size: 2.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="game-hub-container">
+    <!-- Header -->
+    <div class="header-section">
+        <div class="venture-badge">
+            <i class="fas fa-rocket me-2"></i>{{ venture.name }}
+        </div>
+        <h1>GAME HUB</h1>
+        <p class="lead">Complete puzzles to earn points and unlock venture ownership</p>
+    </div>
+
+    {% if games %}
+    <!-- Games Grid -->
+    <div class="game-grid">
+        {% for game in games %}
+        <div class="game-card {{ game.game_type }}" onclick="window.location='{% url 'play_game' venture_id=venture.id game_type=game.game_type %}'">
+            <div class="game-icon">
+                {% if game.game_type == 'sudoku' %}
+                <i class="fas fa-th-large"></i>
+                {% elif game.game_type == 'kakuro' %}
+                <i class="fas fa-crosshairs"></i>
+                {% else %}
+                <i class="fas fa-key"></i>
+                {% endif %}
+            </div>
+            
+            <h3>{{ game.get_game_type_display }}</h3>
+            
+            <div class="difficulty-indicator difficulty-{{ game.difficulty }}">
+                {{ game.get_difficulty_display }}
+            </div>
+            
+            <div class="game-stats">
+                <div class="stat">
+                    <div class="stat-value">{{ game.puzzles.count }}</div>
+                    <div class="stat-label">Puzzles</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">{{ game.base_points }}</div>
+                    <div class="stat-label">Points</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">{{ game.time_limit_seconds|divisibleby:60 }}</div>
+                    <div class="stat-label">Minutes</div>
+                </div>
+            </div>
+            
+            <div class="game-progress">
+                <div class="progress-bar">
+                    {% widthratio completed_puzzles|get_item:game.id game.puzzles.count 100 as progress %}
+                    <div class="progress-fill" style="width: {{ progress }}%"></div>
+                </div>
+                <div class="progress-text">
+                    {{ completed_puzzles|get_item:game.id|default:0 }}/{{ game.puzzles.count }} puzzles solved
+                </div>
+            </div>
+            
+            {% if progress == 100 %}
+            <div class="completion-badge">
+                <i class="fas fa-trophy me-2"></i>Completed!
+            </div>
+            {% endif %}
+            
+            <div class="game-actions">
+                <button class="action-btn play" onclick="event.stopPropagation(); window.location='{% url 'play_game' venture_id=venture.id game_type=game.game_type %}'">
+                    <i class="fas fa-play me-2"></i>Play
+                </button>
+                <button class="action-btn download" onclick="event.stopPropagation(); downloadPuzzle('{{ game.game_type }}', '{{ venture.id }}')">
+                    <i class="fas fa-download me-2"></i>Download
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="leaderboard-section">
+        <h2 class="gradient-text mb-4"><i class="fas fa-trophy me-2"></i>Leaderboard</h2>
+        
+        {% if leaderboards %}
+        <div class="table-responsive">
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th class="rank">Rank</th>
+                        <th>Player</th>
+                        <th>Games Completed</th>
+                        <th>Total Score</th>
+                        <th>Avg Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in leaderboards %}
+                    <tr>
+                        <td class="rank rank-{{ forloop.counter }}">
+                            {% if forloop.counter <= 3 %}
+                            <i class="fas fa-medal"></i>
+                            {% else %}
+                            {{ forloop.counter }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="player-info">
+                                <div class="player-avatar">
+                                    {{ entry.player.username|first|upper }}
+                                </div>
+                                <div>
+                                    <strong>{{ entry.player.username }}</strong>
+                                    <br>
+                                    <small>{{ entry.player.email }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ entry.completed_games }}/{{ games.count }}</td>
+                        <td>
+                            <strong style="color: var(--secondary);">{{ entry.total_score }}</strong>
+                        </td>
+                        <td>{{ entry.avg_time|floatformat:1 }}s</td>
+                        <td>
+                            {% if entry.completed_games == games.count %}
+                            <span class="completion-badge">
+                                <i class="fas fa-crown me-1"></i>Venture Owner
+                            </span>
+                            {% else %}
+                            <span style="color: var(--warning);">In Progress</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-trophy"></i>
+            <h4>No Leaderboard Data Yet</h4>
+            <p>Be the first to complete a puzzle!</p>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <i class="fas fa-gamepad"></i>
+        <h3>No Games Available</h3>
+        <p>This venture doesn't have any games yet.</p>
+        {% if user.is_staff %}
+        <a href="{% url 'create_venture_game' %}" class="btn-gradient mt-3">
+            <i class="fas fa-plus me-2"></i>Create First Game
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function downloadPuzzle(gameType, ventureId) {
+        // Show loading
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-info';
+        alert.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Preparing download...';
+        document.getElementById('alertContainer').appendChild(alert);
+        
+        // Make API call to download
+        fetch(`/api/games/download/${ventureId}/${gameType}/`)
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${gameType}_puzzle_${ventureId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                // Update alert
+                alert.className = 'alert alert-success';
+                alert.innerHTML = '<i class="fas fa-check me-2"></i>Download started!';
+            })
+            .catch(error => {
+                alert.className = 'alert alert-danger';
+                alert.innerHTML = '<i class="fas fa-times me-2"></i>Download failed!';
+            });
+        
+        // Remove alert after 5 seconds
+        setTimeout(() => alert.remove(), 5000);
+    }
+</script>
+{% endblock %}

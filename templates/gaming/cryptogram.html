@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}🌠 Cryptogram | {{ venture.name }} | NEXT STAR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cryptogram-container {
+        font-family: 'Courier New', monospace;
+    }
+    
+    .cipher-text {
+        font-size: 1.5rem;
+        line-height: 2;
+        letter-spacing: 1px;
+    }
+    
+    .cipher-char {
+        display: inline-block;
+        margin: 0 2px;
+        padding: 5px 10px;
+        border-bottom: 2px solid rgba(123, 63, 228, 0.5);
+        cursor: pointer;
+    }
+    
+    .cipher-char.spaced {
+        margin-right: 20px;
+    }
+    
+    .cipher-char.selected {
+        background: rgba(123, 63, 228, 0.2);
+        border-color: var(--secondary);
+    }
+    
+    .alphabet-key {
+        display: grid;
+        grid-template-columns: repeat(13, 1fr);
+        gap: 10px;
+        margin: 30px 0;
+    }
+    
+    .key-item {
+        text-align: center;
+        padding: 10px;
+        background: rgba(10, 11, 30, 0.8);
+        border-radius: 8px;
+        border: 1px solid rgba(123, 63, 228, 0.3);
+    }
+    
+    .key-cipher {
+        color: var(--secondary);
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    
+    .key-plain {
+        color: var(--light);
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cryptogram-container">
+    <div class="cipher-text" id="cipherText">
+        <!-- Encrypted text with clickable characters -->
+    </div>
+    
+    <div class="alphabet-key" id="alphabetKey">
+        <!-- A-Z mapping interface -->
+    </div>
+    
+    <!-- Frequency analysis tools -->
+    <div class="tools-section">
+        <button onclick="analyzeFrequency()">Frequency Analysis</button>
+        <button onclick="autoSolve()">Auto-solve</button>
+        <button onclick="checkSolution()">Check Solution</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Cryptogram solving logic
+    // Character mapping, frequency analysis, solution checking
+</script>
+{% endblock %}
