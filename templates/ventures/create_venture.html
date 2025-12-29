@@ -1,0 +1,344 @@
+<!-- templates/ventures/create_venture.html -->
+{% extends 'base.html' %}
+
+{% block title %}Create New Venture{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-gradient text-white py-4">
+                    <h2 class="mb-0">
+                        <i class="fas fa-rocket me-2"></i>Launch New Venture
+                    </h2>
+                    <p class="mb-0 opacity-75">Create an NFT-backed venture for funding</p>
+                </div>
+                
+                <div class="card-body p-5">
+                    <form method="POST" action="{% url 'create_venture' %}" id="createVentureForm">
+                        {% csrf_token %}
+                        
+                        <!-- Basic Information -->
+                        <div class="mb-4">
+                            <h4 class="text-primary mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Basic Information
+                            </h4>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="name" class="form-label fw-bold">Venture Name *</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           required placeholder="e.g., AgriTech Africa">
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="slug" class="form-label fw-bold">URL Slug *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">nextstar.africa/ventures/</span>
+                                        <input type="text" class="form-control" id="slug" name="slug" 
+                                               required placeholder="agritech-africa">
+                                    </div>
+                                    <small class="text-muted">Use lowercase, hyphens, no spaces</small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="description" class="form-label fw-bold">Description *</label>
+                                <textarea class="form-control" id="description" name="description" 
+                                          rows="3" required placeholder="Describe your venture..."></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="problem_statement" class="form-label fw-bold">Problem Statement *</label>
+                                <textarea class="form-control" id="problem_statement" name="problem_statement" 
+                                          rows="2" required placeholder="What problem are you solving?"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="solution" class="form-label fw-bold">Solution *</label>
+                                <textarea class="form-control" id="solution" name="solution" 
+                                          rows="2" required placeholder="How are you solving it?"></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Funding Details -->
+                        <div class="mb-4">
+                            <h4 class="text-primary mb-3">
+                                <i class="fas fa-chart-line me-2"></i>Funding Details
+                            </h4>
+                            
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="funding_goal" class="form-label fw-bold">Funding Goal (STAR) *</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="funding_goal" 
+                                               name="funding_goal" required min="100" step="100"
+                                               placeholder="50000">
+                                        <span class="input-group-text">STAR</span>
+                                    </div>
+                                    <small class="text-muted">Total amount needed</small>
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <label for="ticket_price" class="form-label fw-bold">Ticket Price (STAR) *</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="ticket_price" 
+                                               name="ticket_price" required min="10" step="10"
+                                               placeholder="500">
+                                        <span class="input-group-text">STAR</span>
+                                    </div>
+                                    <small class="text-muted">Price per investment ticket</small>
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <label for="max_tickets" class="form-label fw-bold">Max Tickets *</label>
+                                    <input type="number" class="form-control" id="max_tickets" 
+                                           name="max_tickets" required min="1" max="1000" 
+                                           value="100" placeholder="100">
+                                    <small class="text-muted">Max investors (1 ticket each)</small>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info">
+                                <i class="fas fa-calculator me-2"></i>
+                                <strong>Calculation:</strong> 
+                                <span id="calculationText">
+                                    Loading calculation...
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Timeline -->
+                        <div class="mb-4">
+                            <h4 class="text-primary mb-3">
+                                <i class="fas fa-calendar-alt me-2"></i>Funding Timeline
+                            </h4>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="funding_start" class="form-label fw-bold">Start Date *</label>
+                                    <input type="datetime-local" class="form-control" id="funding_start" 
+                                           name="funding_start" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="funding_end" class="form-label fw-bold">End Date *</label>
+                                    <input type="datetime-local" class="form-control" id="funding_end" 
+                                           name="funding_end" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- NFT Configuration -->
+                        <div class="mb-4">
+                            <h4 class="text-primary mb-3">
+                                <i class="fas fa-certificate me-2"></i>NFT Configuration
+                            </h4>
+                            
+                            <div class="alert alert-warning">
+                                <i class="fas fa-info-circle me-2"></i>
+                                An NFT collection will be created on Hedera for this venture.
+                                Each investor will receive an NFT ticket from this collection.
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">NFT Symbol</label>
+                                    <input type="text" class="form-control" id="nft_symbol_preview" 
+                                           readonly placeholder="Auto-generated">
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Equity Per Ticket</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="equity_per_ticket" 
+                                               readonly value="0%">
+                                        <span class="input-group-text">per investor</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-outline-secondary me-2" onclick="history.back()">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </button>
+                            <button type="submit" class="btn btn-gradient px-5" id="submitBtn">
+                                <i class="fas fa-rocket me-2"></i>Launch Venture
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Venture Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewContent">
+                <!-- Preview will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Edit</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('createVentureForm').submit()">
+                    Confirm & Launch
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-generate slug from name
+    document.getElementById('name').addEventListener('input', function() {
+        const name = this.value;
+        const slugInput = document.getElementById('slug');
+        
+        if (!slugInput.value) {
+            const slug = name.toLowerCase()
+                .replace(/[^\w\s]/gi, '')
+                .replace(/\s+/g, '-')
+                .substring(0, 50);
+            slugInput.value = slug;
+            
+            // Update NFT symbol preview
+            const nftSymbol = slug.substring(0, 5).toUpperCase() + 'VENT';
+            document.getElementById('nft_symbol_preview').value = nftSymbol;
+        }
+    });
+    
+    // Real-time calculations
+    function updateCalculations() {
+        const fundingGoal = parseFloat(document.getElementById('funding_goal').value) || 0;
+        const ticketPrice = parseFloat(document.getElementById('ticket_price').value) || 0;
+        const maxTickets = parseInt(document.getElementById('max_tickets').value) || 0;
+        
+        // Update calculation text
+        const calculationText = document.getElementById('calculationText');
+        if (fundingGoal > 0 && ticketPrice > 0 && maxTickets > 0) {
+            const neededTickets = Math.ceil(fundingGoal / ticketPrice);
+            const equityPerTicket = (100 / maxTickets).toFixed(2);
+            
+            calculationText.innerHTML = `
+                ${maxTickets} tickets × ${ticketPrice} STAR = ${maxTickets * ticketPrice} STAR total.
+                Each investor gets ${equityPerTicket}% equity.
+                ${neededTickets} tickets needed to reach goal.
+            `;
+            
+            // Update equity per ticket
+            document.getElementById('equity_per_ticket').value = `${equityPerTicket}%`;
+            
+            // Validate max tickets
+            if (maxTickets < neededTickets) {
+                calculationText.innerHTML += 
+                    '<span class="text-danger"> ⚠️ Max tickets is less than needed!</span>';
+            }
+        } else {
+            calculationText.textContent = 'Enter values to see calculation';
+        }
+    }
+    
+    // Attach calculation updates
+    ['funding_goal', 'ticket_price', 'max_tickets'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updateCalculations);
+    });
+    
+    // Form submission
+    document.getElementById('createVentureForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Validate dates
+        const startDate = new Date(document.getElementById('funding_start').value);
+        const endDate = new Date(document.getElementById('funding_end').value);
+        
+        if (endDate <= startDate) {
+            alert('End date must be after start date!');
+            return;
+        }
+        
+        // Show preview
+        showPreview();
+    });
+    
+    function showPreview() {
+        const formData = new FormData(document.getElementById('createVentureForm'));
+        const previewContent = document.getElementById('previewContent');
+        
+        let previewHTML = `
+            <div class="venture-preview">
+                <h4 class="text-center mb-4">Venture Launch Preview</h4>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Basic Info</h5>
+                        <p><strong>Name:</strong> ${formData.get('name')}</p>
+                        <p><strong>Slug:</strong> ${formData.get('slug')}</p>
+                        <p><strong>Description:</strong> ${formData.get('description').substring(0, 100)}...</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Funding Details</h5>
+                        <p><strong>Goal:</strong> ${formData.get('funding_goal')} STAR</p>
+                        <p><strong>Ticket Price:</strong> ${formData.get('ticket_price')} STAR</p>
+                        <p><strong>Max Tickets:</strong> ${formData.get('max_tickets')}</p>
+                        <p><strong>Equity per Ticket:</strong> ${document.getElementById('equity_per_ticket').value}</p>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h5>Timeline</h5>
+                        <p><strong>Starts:</strong> ${new Date(formData.get('funding_start')).toLocaleString()}</p>
+                        <p><strong>Ends:</strong> ${new Date(formData.get('funding_end')).toLocaleString()}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>NFT Details</h5>
+                        <p><strong>Collection Symbol:</strong> ${document.getElementById('nft_symbol_preview').value}</p>
+                        <p><strong>Type:</strong> Venture Ownership Tickets</p>
+                        <p><strong>Blockchain:</strong> Hedera Hashgraph</p>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-4">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Note:</strong> This will create an NFT collection on Hedera and cannot be undone.
+                    Gas fees will be charged for the NFT creation.
+                </div>
+            </div>
+        `;
+        
+        previewContent.innerHTML = previewHTML;
+        
+        // Show modal
+        const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+        previewModal.show();
+    }
+    
+    // Initialize calculations on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCalculations();
+        
+        // Set default dates
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 30);
+        
+        document.getElementById('funding_start').value = 
+            now.toISOString().slice(0, 16);
+        document.getElementById('funding_end').value = 
+            tomorrow.toISOString().slice(0, 16);
+    });
+</script>
+{% endblock %}

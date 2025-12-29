@@ -458,61 +458,6 @@ def update_profile_view(request):
                 'error': str(e)
             })
 
-@login_required
-@require_http_methods(["POST"])
-def buy_ticket_view(request):
-    """Buy game tickets"""
-    user_wallet = get_object_or_404(UserWallet, user=request.user)
-    try:
-        data = json.loads(request.body)
-        game_id = data.get('game_id')
-        amount = data.get('amount', 1)
-        
-        # Here you would integrate with payment system
-        # For now, simulate successful purchase
-
-        try:
-            star_bal = get_balance(user_wallet.recipient_id)
-        except Exception as e:
-            star_bal = 0
-        if star_bal < 100:
-            messages.warning(request, "Insufficient Astral to Participate in this draw, please top up your account and try again!")
-            return redirect(request.META.get('HTTP_REFERER', '/'))
-        # Check user Astra balance using Mirror Node
-
-        with transaction.atomic():
-            # FOrge NFT TIcket
-            ticket_metadata = f"title:{draw.title} Convergence - Keys: {star_keys} - User :{user_wallet_id}"
-            nft_ = mint_nft(nft_token_id=nft_id, metadata=ticket_metadata)
-            if nft_['status'] == 'success':
-                assc=associate_nft(account_id=user_wallet.recipient_id, token_id=draw.nft_id, account_private_key=user_wallet.decrypt_key(), nft_id=nft_['message'])
-                if assc['status'] == 'success':
-                    # Create forged key
-                    serial_number = f"AK{draw_id}{user_wallet_id}{nft_['serial']}"
-                    # CReate HCS Message for immutability
-                    submit_message(message=ticket_metadata)
-                    # Transfer Astra from user wallet to Nebula Pool
-                    transfer = fund_pool(recipient_id=user_wallet.recipient_id, amount=100, account_private_key=user_wallet.decrypt_key())
-                    if transfer['status'] == 'failed':
-                        messages.warning(request, f"Token Transfer Failed")
-                        return redirect(request.META.get('HTTP_REFERER', '/'))
-            else:
-                messages.warning(request, f"Forging Failed: {nft_['message']}")
-                return redirect(request.META.get('HTTP_REFERER', '/'))
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Successfully purchased {amount} ticket(s)',
-            'tickets': 15 + amount,  # Update with actual logic
-            'balance': 2450 - (50 * amount)  # Update with actual logic
-        })
-        
-    except Exception as e:
-        logger.error(f"Ticket purchase error: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': 'Purchase failed'
-        })
 
 @login_required
 def get_wallet_details(request):
@@ -529,7 +474,7 @@ def get_wallet_details(request):
                 'public_key': wallet.public_key,
                 'hedera_id': wallet.recipient_id,
                 'balance': balance,
-                'star_tokens': 2450,  # Replace with actual
+                'star_tokens': balance,  # Replace with actual
                 'tickets': 15,
                 'nft_count': 8
             }
@@ -636,61 +581,6 @@ def buy_star(request):
         return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 '''
-    
-
-@login_required
-@require_http_methods(["POST"])
-def create_draw(request):
-    """Admin view to create new draws"""
-    if not request.user.is_staff:
-        messages.warning(request, "admin access required!")
-        return redirect(request.META.get('HTTP_REFERER', '/'))
-    
-    try:
-        
-        title = request.POST['title']
-        symbol = request.POST['symbol']
-        status = request.POST['status'].upper()
-        prize_pool = request.POST['prize_pool']
-        draw_datetime = request.POST['draw_datetime']
-        
-        # Validate required fields
-        if not title and  symbol and status and prize_pool and draw_datetime:
-            messages.warning(request, "All Field are required!")
-            return redirect(request.META.get('HTTP_REFERER', '/'))
-        
-        # Generate winning star keys (6 random numbers 0-9)
-        #winning_keys = [random.randint(0, 9) for _ in range(6)]
-        # CREATE ASTRAL NFT DRAW
-        draw_nft = create_nft(title=title, symbol=symbol)
-        if draw_nft['status'] == 'failed':
-            messages.warning(request, "Draw creation failed, NFT creation was not successful")
-            return redirect(request.META.get('HTTP_REFERER', '/'))
-        else:
-            draw = Draw.objects.create(
-                title=title,
-                prize_pool=prize_pool,
-                draw_datetime=draw_datetime,
-                status=status,
-                nft_id=draw_nft['token_id']
-            )
-            Alert.objects.create(title="New Convergence Launched", content=f"{title} Convergence is now active with {prize_pool} ASTRA prize pool", icon='rocket')
-        
-        # Clear relevant caches
-        cache.delete_many(["platform_stats", "landing_page_data"])
-        messages.success(request, f"{draw.title} Convergence Draw created successfully")
-        return redirect(request.META.get('HTTP_REFERER', '/'))
-        
-    except Exception as e:
-        messages.warning(request, f"An error occured: {e}")
-        return redirect(request.META.get('HTTP_REFERER', '/'))
-
-
-def faqs(request):
-    return render(request, 'faqs.html')
-
-
-
 @login_required(login_url="login")
 def pay_mpesa(request):
     user = request.user
