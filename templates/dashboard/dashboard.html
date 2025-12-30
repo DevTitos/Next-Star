@@ -1102,6 +1102,108 @@
         cursor: pointer;
         box-shadow: 0 5px 15px rgba(123, 63, 228, 0.3);
     }
+    /* Venture-specific styles */
+.venture-game-card {
+    position: relative;
+}
+
+.venture-game-card .game-status.funding {
+    background: rgba(0, 212, 255, 0.1);
+    color: var(--secondary);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.venture-game-card .game-status.inactive {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(232, 244, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.venture-founder {
+    color: var(--secondary);
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+}
+
+/* Filters section */
+.filters-section {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 30px;
+    border: 1px solid rgba(123, 63, 228, 0.1);
+}
+
+.filters-row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-label {
+    color: var(--light);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.filter-select {
+    padding: 8px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(123, 63, 228, 0.3);
+    border-radius: 8px;
+    color: var(--light);
+    min-width: 150px;
+}
+
+.search-box {
+    flex: 1;
+    max-width: 300px;
+    position: relative;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px 15px 10px 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(123, 63, 228, 0.3);
+    border-radius: 8px;
+    color: var(--light);
+}
+
+.search-box i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--secondary);
+}
+
+/* Investors mini list */
+.investors-mini-list {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.investors-mini-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.investors-mini-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.investors-mini-list::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 2px;
+}
 </style>
 {% endblock %}
 
@@ -1232,102 +1334,141 @@
             <!-- Content Sections -->
             <div class="content-grid">
                 <!-- Overview Section (Default) -->
-                <section id="overview" class="content-section overview-grid" style="display: block;">
-                    <div class="section-card">
-                        <div class="section-header">
-                            <h2><i class="fas fa-chart-bar"></i> Venture Stats</h2>
-                            <div class="section-actions">
-                                <span class="badge bg-gradient rounded-pill">Today: {{ today|date:"M d, Y" }}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-value">${{ user_stats.total_invested|floatformat:0 }}</div>
-                                <div class="stat-label">Total Venture Value</div>
-                                <div class="stat-progress">
-                                    <div class="stat-progress-bar" style="width: 75%"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="stat-card">
-                                <div class="stat-value">{{ user_stats.total_ventures }}</div>
-                                <div class="stat-label">Active Ventures</div>
-                                <div class="stat-progress">
-                                    <div class="stat-progress-bar" style="width: 60%"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="stat-card">
-                                <div class="stat-value">{{ user_stats.win_rate }}%</div>
-                                <div class="stat-label">Win Rate</div>
-                                <div class="stat-progress">
-                                    <div class="stat-progress-bar" style="width: {{ user_stats.win_rate }}%"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="stat-card">
-                                <div class="stat-value">{{ user_stats.total_wins }}</div>
-                                <div class="stat-label">Total Wins</div>
-                                <div class="stat-progress">
-                                    <div class="stat-progress-bar" style="width: 90%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="section-header" style="margin-top: 40px;">
-                            <h2><i class="fas fa-gamepad"></i> Active Games</h2>
-                            <div class="section-actions">
-                                <a href="#games" class="btn-gradient" style="padding: 8px 20px;">View All</a>
-                            </div>
-                        </div>
-                        
-                        <div class="games-grid" style="margin-top: 20px;">
-                            {% for game in active_games|slice:":2" %}
-                            <div class="game-card">
-                                <div class="game-header">
-                                    <div class="game-icon" style="background: var(--{{ game.color }});">
-                                        <i class="fas {{ game.icon }}"></i>
-                                    </div>
-                                    <span class="game-status active">{{ game.status|title }}</span>
-                                </div>
-                                
-                                <h3 class="game-title">{{ game.name }}</h3>
-                                
-                                <div class="game-meta">
-                                    <div class="game-meta-item">
-                                        <i class="fas fa-users"></i>
-                                        <span>{{ game.players }} players</span>
-                                    </div>
-                                    <div class="game-meta-item">
-                                        <i class="fas fa-trophy"></i>
-                                        <span>${{ game.prize_pool }}</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="game-progress">
-                                    <div class="progress-label">
-                                        <span>Time remaining</span>
-                                        <span>{{ game.ends_in }}</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" style="width: {{ game.progress }}%"></div>
-                                    </div>
-                                </div>
-                                
-                                <div class="game-actions">
-                                    <button class="btn-gradient" style="padding: 10px 20px; font-size: 0.9rem;">
-                                        <i class="fas fa-play"></i> Join Game
-                                    </button>
-                                    <button class="btn-outline-gradient" style="padding: 10px 20px; font-size: 0.9rem;">
-                                        <i class="fas fa-info-circle"></i> Details
-                                    </button>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
+<section id="overview" class="content-section overview-grid" style="display: block;">
+    <div class="section-card">
+        <div class="section-header">
+            <h2><i class="fas fa-chart-bar"></i> Venture Stats</h2>
+            <div class="section-actions">
+                <span class="badge bg-gradient rounded-pill">Today: {{ today|date:"M d, Y" }}</span>
+                {% if user.is_staff %}
+                <button class="btn-gradient" style="padding: 8px 20px; margin-left: 10px;" data-bs-toggle="modal" data-bs-target="#createVentureModal">
+                    <i class="fas fa-plus"></i> New Venture
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">${{ total_invested|default:"0"|floatformat:0 }}</div>
+                <div class="stat-label">Total Invested</div>
+                <div class="stat-progress">
+                    <div class="stat-progress-bar" style="width: {{ investment_progress|default:"75" }}%"></div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-value">{{ active_ventures.count }}</div>
+                <div class="stat-label">Active Ventures</div>
+                <div class="stat-progress">
+                    <div class="stat-progress-bar" style="width: {{ active_percentage|default:"60" }}%"></div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-value">{{ equity_total|default:"0" }}%</div>
+                <div class="stat-label">Total Equity</div>
+                <div class="stat-progress">
+                    <div class="stat-progress-bar" style="width: {{ equity_total|default:"75" }}%"></div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-value">{{ portfolio_value|default:"0"|floatformat:0 }}</div>
+                <div class="stat-label">Portfolio Value</div>
+                <div class="stat-progress">
+                    <div class="stat-progress-bar" style="width: {{ portfolio_progress|default:"90" }}%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ventures Section (Replaces Active Games) -->
+        <div class="section-header" style="margin-top: 40px;">
+            <h2><i class="fas fa-building"></i> Active Ventures</h2>
+            <div class="section-actions">
+                <a href="#ventures" class="btn-gradient" style="padding: 8px 20px;" onclick="showSection('ventures')">View All</a>
+            </div>
+        </div>
+        
+        <div class="games-grid" style="margin-top: 20px;">
+            {% for venture in active_ventures|slice:":2" %}
+            <div class="game-card venture-game-card">
+                <div class="game-header">
+                    <div class="game-icon" style="background: var(--primary);">
+                        <i class="fas fa-building"></i>
                     </div>
-                </section>
+                    <span class="game-status {% if venture.status == 'active' %}active{% elif venture.status == 'funding' %}funding{% else %}inactive{% endif %}">
+                        {{ venture.get_status_display }}
+                    </span>
+                </div>
+                
+                <h3 class="game-title">{{ venture.name }}</h3>
+                <p class="game-founder" style="color: var(--secondary); margin-bottom: 15px; font-size: 0.9rem;">
+                    <i class="fas fa-user"></i> {{ venture.founder.get_full_name }}
+                </p>
+                
+                <div class="game-meta">
+                    <div class="game-meta-item">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span>{{ venture.tickets_sold }}/{{ venture.max_tickets }}</span>
+                    </div>
+                    <div class="game-meta-item">
+                        <i class="fas fa-coins"></i>
+                        <span>${{ venture.ticket_price }}</span>
+                    </div>
+                    <div class="game-meta-item">
+                        <i class="fas fa-percentage"></i>
+                        <span>{{ venture.equity_per_ticket|floatformat:2 }}%</span>
+                    </div>
+                </div>
+                
+                <div class="game-progress">
+                    <div class="progress-label">
+                        <span>Funding progress</span>
+                        <span>{{ venture.funding_percentage|floatformat:1 }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ venture.funding_percentage }}%"></div>
+                    </div>
+                </div>
+                
+                <div class="game-actions">
+                    <button class="btn-gradient" style="padding: 10px 20px; font-size: 0.9rem;" 
+                            onclick="window.location.href='{% url 'venture_detail' venture.slug %}'">
+                        <i class="fas fa-eye"></i> View Details
+                    </button>
+                    
+                    {% if venture.is_funding_active and venture.tickets_available %}
+                        {% if venture.id in user_ticket_ventures %}
+                        <button class="btn-outline-gradient" style="padding: 10px 20px; font-size: 0.9rem;" disabled>
+                            <i class="fas fa-check-circle"></i> Invested
+                        </button>
+                        {% else %}
+                        <button class="btn-outline-gradient" style="padding: 10px 20px; font-size: 0.9rem;" 
+                                onclick="investInVenture('{{ venture.slug }}', event)">
+                            <i class="fas fa-coins"></i> Invest
+                        </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+                <i class="fas fa-rocket" style="font-size: 3rem; color: var(--secondary); margin-bottom: 20px;"></i>
+                <h4 style="color: var(--light); margin-bottom: 10px;">No Active Ventures</h4>
+                <p style="color: rgba(232, 244, 255, 0.7); margin-bottom: 20px;">
+                    There are no ventures available for investment at the moment.
+                </p>
+                {% if user.is_staff %}
+                <button class="btn-gradient" data-bs-toggle="modal" data-bs-target="#createVentureModal">
+                    <i class="fas fa-plus"></i> Create First Venture
+                </button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
 
                 <!-- Activity Section -->
                 <section id="activity" class="content-section activity-section" style="display: none;">
@@ -1358,119 +1499,191 @@
                     </div>
                 </section>
 
-               <!-- In dashboard.html, update the games section -->
-<section id="games" class="content-section games-section" style="display: none;">
+
+                <!-- Ventures Section -->
+<section id="ventures" class="content-section ventures-section" style="display: none;">
     <div class="section-card">
         <div class="section-header">
-            <h2><i class="fas fa-gamepad"></i> Active Games</h2>
+            <h2><i class="fas fa-chart-line"></i> All Ventures</h2>
+            {% if user.is_staff %}
             <div class="section-actions">
-                <button class="btn-gradient" onclick="launchMatrixGame()">
-                    <i class="fas fa-rocket"></i> Launch CEO Matrix
-                </button>
+                <a href="{% url 'create_venture_page' %}">
+                    <button class="btn-gradient" >
+                        <i class="fas fa-plus"></i> New Venture
+                    </button>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Filters -->
+        <div class="filters-section" style="margin-bottom: 30px;">
+            <div class="filters-row">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search ventures..." id="searchVentures" oninput="filterVentures()">
+                </div>
             </div>
         </div>
         
-        <div class="games-grid">
-            <!-- CEO Matrix Game Card -->
-            <div class="game-card">
-                <div class="game-header">
-                    <div class="game-icon" style="background: var(--primary);">
-                        <i class="fas fa-chess-king"></i>
-                    </div>
-                    <span class="game-status active">Active</span>
+        <!-- Ventures Grid with Cards -->
+        <div class="ventures-list">
+            {% for venture in all_ventures %}
+            <div class="venture-card" id="venture-{{ venture.slug }}">
+                <div class="venture-header">
+                    <div class="venture-name">{{ venture.name }}</div>
+                    <div class="venture-equity">{{ venture.equity_per_ticket|floatformat:2 }}% equity</div>
                 </div>
                 
-                <h3 class="game-title">CEO Matrix</h3>
-                <div class="game-type" style="color: var(--secondary); margin-bottom: 15px;">3D Business Strategy</div>
+                <div class="venture-industry">
+                    <i class="fas fa-user"></i> {{ venture.founder.get_full_name }}
+                    <span style="margin-left: 20px;">
+                        <i class="fas fa-ticket-alt"></i> {{ venture.tickets_sold }}/{{ venture.max_tickets }} tickets
+                    </span>
+                    <span style="margin-left: 20px;">
+                        <i class="fas fa-clock"></i> 
+                        {% if venture.is_funding_active %}
+                            {{ venture.funding_end|timeuntil }} left
+                        {% else %}
+                            {{ venture.get_status_display }}
+                        {% endif %}
+                    </span>
+                </div>
                 
-                <div class="game-meta">
-                    <div class="game-meta-item">
-                        <i class="fas fa-users"></i>
-                        <span id="matrixPlayers">0</span> players
+                <!-- Funding Progress Bar -->
+                <div style="margin: 15px 0;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span style="color: rgba(232, 244, 255, 0.7); font-size: 0.9rem;">Funding Progress</span>
+                        <span style="color: var(--secondary); font-weight: bold; font-size: 0.9rem;">
+                            ${{ venture.funding_raised|floatformat:0 }} / ${{ venture.funding_goal|floatformat:0 }}
+                        </span>
                     </div>
-                    <div class="game-meta-item">
-                        <i class="fas fa-trophy"></i>
-                        <span id="matrixPrize">10,000 STAR</span>
+                    <div class="progress-bar" style="height: 8px;">
+                        <div class="progress-fill" style="width: {{ venture.funding_percentage }}%"></div>
                     </div>
-                    <div class="game-meta-item">
-                        <i class="fas fa-clock"></i>
-                        <span>24h left</span>
+                    <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                        <span style="color: rgba(232, 244, 255, 0.7); font-size: 0.8rem;">0%</span>
+                        <span style="color: var(--secondary); font-size: 0.8rem;">{{ venture.funding_percentage|floatformat:1 }}%</span>
+                        <span style="color: rgba(232, 244, 255, 0.7); font-size: 0.8rem;">100%</span>
                     </div>
                 </div>
                 
-                <div class="game-progress">
-                    <div class="progress-label">
-                        <span>Unsolved</span>
-                        <span>Only 1 Genius</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 0%"></div>
+                <div class="venture-stats">
+                    <div class="venture-value">${{ venture.ticket_price }}</div>
+                    <div class="venture-growth {% if venture.funding_percentage >= 50 %}positive{% else %}warning{% endif %}">
+                        <i class="fas fa-chart-line"></i>
+                        {{ venture.funding_percentage|floatformat:1 }}% funded
                     </div>
                 </div>
                 
-                <div class="game-actions">
-                    <button class="btn-gradient" onclick="launchMatrixGame()">
-                        <i class="fas fa-play"></i> Play Now
+                <!-- Investor Leaderboard for this Venture -->
+                <div style="margin-top: 20px; background: rgba(255, 255, 255, 0.03); border-radius: 10px; padding: 15px;">
+                    <h4 style="color: var(--light); margin-bottom: 15px; font-size: 1rem;">
+                        <i class="fas fa-trophy"></i> Top Investors
+                    </h4>
+                    
+                    <div class="investors-mini-list">
+                        {% for investor in venture.top_investors|slice:":3" %}
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 30px; height: 30px; border-radius: 50%; background: var(--gradient); 
+                                         display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">
+                                    {{ forloop.counter }}
+                                </div>
+                                <span style="color: var(--light); font-size: 0.9rem;">
+                                    {{ investor.user.first_name|slice:":1" }}. {{ investor.user.last_name }}
+                                </span>
+                            </div>
+                            <span style="color: var(--secondary); font-weight: bold; font-size: 0.9rem;">
+                                {{ investor.equity_percentage|floatformat:1 }}%
+                            </span>
+                        </div>
+                        {% empty %}
+                        <div style="text-align: center; padding: 10px; color: var(--secondary);">
+                            <i class="fas fa-users"></i> No investors yet
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if venture.investor_count > 3 %}
+                    <div style="text-align: center; margin-top: 10px;">
+                        <button class="wallet-btn" style="padding: 5px 15px; font-size: 0.8rem;" 
+                                onclick="viewAllInvestors('{{ venture.slug }}')">
+                            View all {{ venture.investor_count }} investors
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Action Buttons -->
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button class="wallet-btn" style="flex: 1;" onclick="window.location.href='{% url 'venture_detail' venture.slug %}'">
+                        <i class="fas fa-eye"></i> View Details
                     </button>
-                    <button class="btn-outline-gradient" onclick="showGameInfo('matrix')">
-                        <i class="fas fa-info-circle"></i> How to Play
-                    </button>
+                    
+                    {% if venture.is_funding_active and venture.tickets_available %}
+                        {% if venture.id in user_ticket_ventures %}
+                        <button class="wallet-btn primary" style="flex: 1;" disabled>
+                            <i class="fas fa-check-circle"></i> Already Invested
+                        </button>
+                        {% else %}
+                        <button class="wallet-btn primary" style="flex: 1;" onclick="investInVenture('{{ venture.slug }}')">
+                            <i class="fas fa-coins"></i> Invest Now
+                        </button>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
-            
-            <!-- Other game cards... -->
+            {% empty %}
+            <div style="text-align: center; padding: 60px; color: var(--secondary);">
+                <i class="fas fa-rocket" style="font-size: 3rem; margin-bottom: 20px;"></i>
+                <h4 style="color: var(--light); margin-bottom: 10px;">No Ventures Found</h4>
+                <p style="color: rgba(232, 244, 255, 0.7); margin-bottom: 30px;">
+                    There are no ventures matching your criteria.
+                </p>
+                <button class="btn-gradient" onclick="clearFilters()">
+                    <i class="fas fa-sync"></i> Clear Filters
+                </button>
+            </div>
+            {% endfor %}
         </div>
+        
+        <!-- Pagination -->
+        {% if all_ventures.paginator.num_pages > 1 %}
+        <div style="margin-top: 40px; text-align: center;">
+            <nav aria-label="Ventures pagination">
+                <ul class="pagination justify-content-center">
+                    {% if all_ventures.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ all_ventures.previous_page_number }}" onclick="loadPage(event, {{ all_ventures.previous_page_number }})">
+                            Previous
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in all_ventures.paginator.page_range %}
+                    {% if all_ventures.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > all_ventures.number|add:'-3' and num < all_ventures.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}" onclick="loadPage(event, {{ num }})">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                    
+                    {% if all_ventures.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ all_ventures.next_page_number }}" onclick="loadPage(event, {{ all_ventures.next_page_number }})">
+                            Next
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
     </div>
 </section>
-
-                <!-- Ventures Section -->
-                <section id="ventures" class="content-section ventures-section" style="display: none;">
-                    <div class="section-card">
-                        <div class="section-header">
-                            <h2><i class="fas fa-chart-line"></i> My Ventures</h2>
-                            <div class="section-actions">
-                                <button class="btn-gradient" data-bs-toggle="modal" data-bs-target="#createVentureModal">
-                                    <i class="fas fa-plus"></i> New Venture
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="ventures-list">
-                            {% for venture in user_ventures %}
-                            <div class="venture-card">
-                                <div class="venture-header">
-                                    <div class="venture-name">{{ venture.name }}</div>
-                                    <div class="venture-equity">{{ venture.equity }}%</div>
-                                </div>
-                                
-                                <div class="venture-industry">
-                                    <i class="fas fa-industry"></i> {{ venture.industry }}
-                                    <span style="margin-left: 20px;">
-                                        <i class="fas fa-user-friends"></i> {{ venture.members }} members
-                                    </span>
-                                </div>
-                                
-                                <div class="venture-stats">
-                                    <div class="venture-value">${{ venture.value|floatformat:0 }}</div>
-                                    <div class="venture-growth {% if venture.growth < 0 %}negative{% endif %}">
-                                        <i class="fas fa-arrow-{% if venture.growth >= 0 %}up{% else %}down{% endif %}"></i>
-                                        {{ venture.growth|floatformat:1 }}%
-                                    </div>
-                                </div>
-                                
-                                <div style="margin-top: 15px; display: flex; gap: 10px;">
-                                    <span class="badge {% if venture.role == 'CEO' %}bg-gradient{% else %}bg-secondary{% endif %} rounded-pill">
-                                        {{ venture.role }}
-                                    </span>
-                                    <span class="badge {% if venture.status == 'active' %}bg-success{% else %}bg-warning{% endif %} rounded-pill">
-                                        {{ venture.status|title }}
-                                    </span>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </section>
 
                 <!-- Wallet Section -->
                 <section id="wallet" class="content-section wallet-section" style="display: none;">
@@ -1821,32 +2034,6 @@
                         </div>
                     </div>
                 </section>
-
-                <!-- Strategy Section -->
-                <section id="strategy" class="content-section" style="display: none;">
-                    <div class="section-card">
-                        <div class="section-header">
-                            <h2><i class="fas fa-lightbulb"></i> Strategy Builder</h2>
-                            <div class="section-actions">
-                                <button class="btn-gradient" data-bs-toggle="modal" data-bs-target="#submitStrategyModal">
-                                    <i class="fas fa-plus"></i> New Strategy
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div style="text-align: center; padding: 60px 20px;">
-                            <i class="fas fa-lightbulb" style="font-size: 4rem; color: var(--secondary); margin-bottom: 20px;"></i>
-                            <h3 style="color: var(--light); margin-bottom: 15px;">Craft Winning Strategies</h3>
-                            <p style="color: rgba(232, 244, 255, 0.8); max-width: 600px; margin: 0 auto 30px;">
-                                Submit your business strategies for venture arenas. Winning strategies become real startups, 
-                                and you become the CEO with 20% equity!
-                            </p>
-                            <button class="btn-gradient" data-bs-toggle="modal" data-bs-target="#submitStrategyModal" style="padding: 15px 40px;">
-                                <i class="fas fa-rocket"></i> Start Building
-                            </button>
-                        </div>
-                    </div>
-                </section>
             </div>
         </div>
     </div>
@@ -1928,48 +2115,6 @@
         </div>
     </div>
 
-    <!-- Submit Strategy Modal -->
-    <div class="modal fade" id="submitStrategyModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5><i class="fas fa-lightbulb me-2"></i> Submit New Strategy</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="strategyForm">
-                        <div class="form-group">
-                            <label class="form-label">Select Game</label>
-                            <select class="form-control" id="strategyGame">
-                                {% for game in active_games %}
-                                <option value="{{ game.id }}">{{ game.name }} ({{ game.type }})</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Strategy Title</label>
-                            <input type="text" class="form-control" placeholder="e.g., AI-Powered AgriTech Solution" id="strategyTitle">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Business Plan</label>
-                            <textarea class="form-control" rows="8" placeholder="Describe your business strategy in detail..." id="strategyContent"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Upload Supporting Documents (Optional)</label>
-                            <input type="file" class="form-control" id="strategyFile" accept=".pdf,.doc,.docx">
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-outline-gradient" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn-gradient" id="submitStrategy">
-                        <i class="fas fa-paper-plane"></i> Submit Strategy
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Create Venture Modal -->
     <div class="modal fade" id="createVentureModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -1978,40 +2123,35 @@
                     <h5><i class="fas fa-plus me-2"></i> Create New Venture</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <p style="color: var(--secondary); margin-bottom: 20px;">
-                        <i class="fas fa-info-circle"></i> Ventures require 1000 STAR tokens to create and become active after community voting.
-                    </p>
-                    <div class="form-group">
-                        <label class="form-label">Venture Name</label>
-                        <input type="text" class="form-control" placeholder="e.g., EcoEnergy Africa" id="ventureName">
+                <form action="{% url 'create_venture' %}" method="post">
+                    <div class="modal-body">
+                        <p style="color: var(--secondary); margin-bottom: 20px;">
+                            <i class="fas fa-info-circle"></i> Ventures require 1000 STAR tokens to create and become active after community voting.
+                        </p>
+                        <div class="form-group">
+                            <label class="form-label">Venture Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g., EcoEnergy Africa" id="ventureName">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="4" placeholder="Provide description for this venture." id="ventureProblem"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Funding Goal (STAR tokens)</label>
+                            <input type="number" name="funding_goal" class="form-control" min="1000" value="1000000" id="ventureInvestment">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Ticket Price (STAR tokens)</label>
+                            <input type="number" name="ticket_price" class="form-control" min="1000" value="1000000" id="ventureInvestmentTarget">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Industry</label>
-                        <select class="form-control" id="ventureIndustry">
-                            <option value="tech">Technology</option>
-                            <option value="energy">Energy</option>
-                            <option value="agriculture">Agriculture</option>
-                            <option value="finance">Finance</option>
-                            <option value="healthcare">Healthcare</option>
-                            <option value="education">Education</option>
-                        </select>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-outline-gradient" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn-gradient">
+                            <i class="fas fa-rocket"></i> Create Venture (1000 STAR)
+                        </button>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Problem Statement</label>
-                        <textarea class="form-control" rows="4" placeholder="What problem does this venture solve?" id="ventureProblem"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Initial Investment (STAR tokens)</label>
-                        <input type="number" class="form-control" min="1000" value="1000" id="ventureInvestment">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-outline-gradient" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn-gradient" id="createVenture">
-                        <i class="fas fa-rocket"></i> Create Venture (1000 STAR)
-                    </button>
-                </div>
+                </form>
             </div>
         </div>
     </div>
@@ -2264,51 +2404,6 @@
         // Add token transfer logic here
     });
     
-    // Submit Strategy
-    document.getElementById('submitStrategy')?.addEventListener('click', function() {
-        const gameId = document.getElementById('strategyGame').value;
-        const title = document.getElementById('strategyTitle').value;
-        const content = document.getElementById('strategyContent').value;
-        
-        if (!title || !content) {
-            showToast('Please fill all required fields', 'warning');
-            return;
-        }
-        
-        const formData = new FormData();
-        formData.append('game_id', gameId);
-        formData.append('strategy', content);
-        formData.append('title', title);
-        
-        // Add file if exists
-        const fileInput = document.getElementById('strategyFile');
-        if (fileInput.files[0]) {
-            formData.append('attachment', fileInput.files[0]);
-        }
-        
-        fetch('{% url "submit_strategy" %}', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast(data.message, 'success');
-                bootstrap.Modal.getInstance(document.getElementById('submitStrategyModal')).hide();
-                // Reset form
-                document.getElementById('strategyForm').reset();
-            } else {
-                showToast('Error: ' + data.error, 'danger');
-            }
-        })
-        .catch(error => {
-            showToast('Network error: ' + error, 'danger');
-        });
-    });
-    
     // Helper Functions
     function showToast(message, type = 'info') {
         const toastContainer = document.getElementById('alertContainer');
@@ -2394,156 +2489,87 @@
 </script>
 
 <script>
-    // Game Launch Functions
-function launchMatrixGame() {
-    const modal = new bootstrap.Modal(document.getElementById('gameLaunchModal'));
+    // Filter ventures
+function filterVentures() {
+    const status = document.getElementById('statusFilter').value;
+    const sort = document.getElementById('sortFilter').value;
+    const search = document.getElementById('searchVentures').value.toLowerCase();
     
-    // Load game content
-    loadMatrixGame();
+    const ventureCards = document.querySelectorAll('.venture-card');
+    let visibleCount = 0;
     
-    // Show modal
-    modal.show();
-}
-
-function loadMatrixGame() {
-    const gameContent = document.getElementById('gameModalContent');
+    ventureCards.forEach(card => {
+        const ventureStatus = card.querySelector('.venture-industry').textContent.toLowerCase();
+        const ventureName = card.querySelector('.venture-name').textContent.toLowerCase();
+        const ventureFounder = card.querySelector('.venture-industry').textContent.toLowerCase();
+        
+        let shouldShow = true;
+        
+        // Status filter
+        if (status !== 'all') {
+            if (status === 'funding' && !ventureStatus.includes('funding')) {
+                shouldShow = false;
+            } else if (status === 'active' && !ventureStatus.includes('active')) {
+                shouldShow = false;
+            } else if (status === 'funded' && !ventureStatus.includes('funded')) {
+                shouldShow = false;
+            }
+        }
+        
+        // Search filter
+        if (search && !ventureName.includes(search) && !ventureFounder.includes(search)) {
+            shouldShow = false;
+        }
+        
+        card.style.display = shouldShow ? 'block' : 'none';
+        if (shouldShow) visibleCount++;
+    });
     
-    // Show loading state
-    gameContent.innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
-                <span class="visually-hidden">Loading...</span>
+    // Show empty state if no ventures
+    const emptyState = document.querySelector('.empty-state');
+    if (visibleCount === 0 && !emptyState) {
+        const venturesList = document.querySelector('.ventures-list');
+        venturesList.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: var(--secondary);">
+                <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 20px;"></i>
+                <h4 style="color: var(--light); margin-bottom: 10px;">No Ventures Found</h4>
+                <p style="color: rgba(232, 244, 255, 0.7); margin-bottom: 30px;">
+                    No ventures match your search criteria.
+                </p>
+                <button class="btn-gradient" onclick="clearFilters()">
+                    <i class="fas fa-sync"></i> Clear Filters
+                </button>
             </div>
-            <h4 style="margin-top: 20px; color: var(--light);">Initializing CEO Matrix...</h4>
-            <p style="color: rgba(232, 244, 255, 0.7);">Preparing 3D business strategy challenge</p>
-        </div>
-    `;
-    
-    // Load game via AJAX
-    fetch('/game/matrix/')
-        .then(response => response.text())
-        .then(html => {
-            // Inject game HTML
-            gameContent.innerHTML = html;
-            
-            // Initialize game scripts
-            initializeGameScripts();
-        })
-        .catch(error => {
-            gameContent.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: var(--danger);">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 20px;"></i>
-                    <h4>Failed to load game</h4>
-                    <p>${error.message}</p>
-                    <button class="btn-gradient mt-3" onclick="loadMatrixGame()">
-                        <i class="fas fa-redo"></i> Try Again
-                    </button>
-                </div>
-            `;
-        });
-}
-
-function initializeGameScripts() {
-    // This function will be called after game loads
-    // Game-specific initialization will happen here
-    
-    console.log('Game loaded, initializing...');
-    
-    // You might need to re-initialize certain game scripts
-    // For now, just log success
-}
-
-function showGameInfo(gameType) {
-    if (gameType === 'matrix') {
-        const infoModal = new bootstrap.Modal(document.getElementById('gameInfoModal') || createGameInfoModal());
-        infoModal.show();
+        `;
     }
 }
 
-function createGameInfoModal() {
-    const modal = document.createElement('div');
-    modal.id = 'gameInfoModal';
-    modal.className = 'modal fade';
-    modal.innerHTML = `
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5><i class="fas fa-chess-king"></i> CEO Matrix - How to Play</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <i class="fas fa-brain" style="font-size: 3rem; color: var(--primary);"></i>
-                        <h4 style="color: var(--light); margin-top: 15px;">3D Business Strategy Challenge</h4>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                        <div style="background: rgba(123, 63, 228, 0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(123, 63, 228, 0.3);">
-                            <div style="font-size: 2rem; margin-bottom: 10px;">🧠</div>
-                            <h6 style="color: var(--light);">Strategic Thinking</h6>
-                            <p style="color: rgba(232, 244, 255, 0.7); font-size: 0.9rem;">Navigate through 3D matrix of business challenges</p>
-                        </div>
-                        
-                        <div style="background: rgba(0, 212, 255, 0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0, 212, 255, 0.3);">
-                            <div style="font-size: 2rem; margin-bottom: 10px;">🏆</div>
-                            <h6 style="color: var(--light);">Only One Winner</h6>
-                            <p style="color: rgba(232, 244, 255, 0.7); font-size: 0.9rem;">Each matrix can only be solved by one genius</p>
-                        </div>
-                        
-                        <div style="background: rgba(0, 255, 157, 0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0, 255, 157, 0.3);">
-                            <div style="font-size: 2rem; margin-bottom: 10px;">💰</div>
-                            <h6 style="color: var(--light);">Real Rewards</h6>
-                            <p style="color: rgba(232, 244, 255, 0.7); font-size: 0.9rem;">Win STAR tokens and equity NFTs</p>
-                        </div>
-                    </div>
-                    
-                    <h6 style="color: var(--secondary); margin-bottom: 15px;">Game Rules:</h6>
-                    <ol style="color: rgba(232, 244, 255, 0.8); padding-left: 20px; margin-bottom: 30px;">
-                        <li>Navigate through 5x5x3 3D matrix</li>
-                        <li>Each cell contains business challenges</li>
-                        <li>Find the hidden solution path</li>
-                        <li>Only 100 moves allowed per game</li>
-                        <li>First correct solution wins the matrix</li>
-                    </ol>
-                    
-                    <div style="background: rgba(255, 77, 232, 0.1); padding: 15px; border-radius: 10px; border-left: 4px solid var(--accent);">
-                        <p style="color: var(--light); margin: 0;">
-                            <i class="fas fa-lightbulb"></i> 
-                            <strong>Tip:</strong> Think like a CEO - balance risk, innovation, and execution!
-                        </p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-outline-gradient" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn-gradient" onclick="launchMatrixGame()">
-                        <i class="fas fa-play"></i> Start Playing
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
+function clearFilters() {
+    document.getElementById('statusFilter').value = 'all';
+    document.getElementById('sortFilter').value = 'newest';
+    document.getElementById('searchVentures').value = '';
+    filterVentures();
+}
+
+// Investment function
+function investInVenture(ventureSlug, event = null) {
+    if (event) event.stopPropagation();
     
-    document.body.appendChild(modal);
-    return modal;
+    // Show investment modal or redirect
+    window.location.href = `/ventures/${ventureSlug}/`;
 }
 
-// Update game stats
-function updateGameStats() {
-    fetch('/api/matrix/stats/')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('matrixPlayers').textContent = data.players;
-                document.getElementById('matrixPrize').textContent = data.prize_pool + ' STAR';
-            }
-        })
-        .catch(error => console.error('Failed to load game stats:', error));
+// View all investors
+function viewAllInvestors(ventureSlug) {
+    window.location.href = `/ventures/${ventureSlug}/#investors`;
 }
 
-// Load game stats on page load
-document.addEventListener('DOMContentLoaded', function() {
-    updateGameStats();
-    setInterval(updateGameStats, 30000); // Update every 30 seconds
-});
+// Load page via AJAX
+function loadPage(event, page) {
+    event.preventDefault();
+    
+    // Load page via AJAX or redirect
+    window.location.href = `?page=${page}`;
+}
 </script>
 {% endblock %}

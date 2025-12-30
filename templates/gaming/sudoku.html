@@ -71,32 +71,35 @@
 
     .sudoku-board-container {
         position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 600px;
     }
 
     .sudoku-board {
         display: grid;
-        grid-template-columns: repeat({{ size }}, 1fr);
-        grid-template-rows: repeat({{ size }}, 1fr);
-        gap: 2px;
+        gap: 0;
         background: rgba(123, 63, 228, 0.3);
-        padding: 10px;
-        border-radius: 12px;
-        max-width: 800px;
-        margin: 0 auto;
+        padding: 4px;
+        border-radius: 8px;
+        border: 2px solid rgba(123, 63, 228, 0.5);
+        max-width: min(800px, 90vw);
+        max-height: min(800px, 90vw);
+        aspect-ratio: 1;
     }
 
     .sudoku-cell {
-        aspect-ratio: 1;
         background: rgba(10, 11, 30, 0.9);
-        border: 1px solid rgba(123, 63, 228, 0.3);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
+        font-size: 1.5rem;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
         position: relative;
+        border: 1px solid rgba(123, 63, 228, 0.2);
     }
 
     .sudoku-cell:hover {
@@ -130,25 +133,21 @@
         animation: pulse 1s infinite;
     }
 
-    /* Sub-grid borders */
-    .sudoku-cell:nth-child(3n) {
-        border-right: 3px solid rgba(123, 63, 228, 0.5);
+    /* Smart sub-grid borders using data attributes */
+    .sudoku-cell[data-right-border="thick"] {
+        border-right: 3px solid rgba(123, 63, 228, 0.5) !important;
     }
-
-    .sudoku-cell:nth-child(3n+1) {
-        border-left: 3px solid rgba(123, 63, 228, 0.5);
+    
+    .sudoku-cell[data-bottom-border="thick"] {
+        border-bottom: 3px solid rgba(123, 63, 228, 0.5) !important;
     }
-
-    .sudoku-board > div:nth-child(n+19):nth-child(-n+27) {
-        border-bottom: 3px solid rgba(123, 63, 228, 0.5);
+    
+    .sudoku-cell[data-left-border="thick"] {
+        border-left: 3px solid rgba(123, 63, 228, 0.5) !important;
     }
-
-    .sudoku-board > div:nth-child(n+1):nth-child(-n+9) {
-        border-top: 3px solid rgba(123, 63, 228, 0.5);
-    }
-
-    .sudoku-board > div:nth-child(n+10):nth-child(-n+18) {
-        border-bottom: 3px solid rgba(123, 63, 228, 0.5);
+    
+    .sudoku-cell[data-top-border="thick"] {
+        border-top: 3px solid rgba(123, 63, 228, 0.5) !important;
     }
 
     .game-controls {
@@ -404,6 +403,35 @@
     .celebrate {
         animation: celebrate 0.5s ease;
     }
+
+    /* Responsive font sizes */
+    @media (max-width: 768px) {
+        .sudoku-cell {
+            font-size: 1.2rem;
+        }
+        
+        .timer {
+            font-size: 2rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .sudoku-cell {
+            font-size: 1rem;
+        }
+        
+        .game-stats {
+            gap: 15px;
+        }
+        
+        .stat-box {
+            padding: 10px 15px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -559,6 +587,7 @@
     const solutionData = {{ solution_data|safe }};
     const sessionId = {{ session_id }};
     const timeLimit = {{ time_limit }};
+    const gridSize = {{ size }};
     
     let selectedCell = null;
     let gameState = JSON.parse(JSON.stringify(puzzleData));
@@ -573,6 +602,8 @@
 
     // Initialize game
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Grid size:', gridSize);
+        console.log('Puzzle data length:', puzzleData.length);
         initializeBoard();
         initializeNumberPad();
         startTimer();
@@ -586,23 +617,49 @@
         const board = document.getElementById('sudokuBoard');
         board.innerHTML = '';
         
-        const size = Math.sqrt(puzzleData.length);
-        board.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
-        board.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+        // Calculate sub-grid size (for standard Sudoku, it's sqrt(gridSize))
+        const subGridSize = Math.sqrt(gridSize);
         
-        for (let i = 0; i < puzzleData.length; i++) {
+        // Set grid template
+        board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+        board.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
+        
+        for (let i = 0; i < gridSize * gridSize; i++) {
             const cell = document.createElement('div');
             cell.className = 'sudoku-cell';
             cell.dataset.index = i;
-            cell.dataset.row = Math.floor(i / size);
-            cell.dataset.col = i % size;
+            cell.dataset.row = Math.floor(i / gridSize);
+            cell.dataset.col = i % gridSize;
             
-            if (puzzleData[i] !== 0) {
+            // Calculate sub-grid borders
+            const row = Math.floor(i / gridSize);
+            const col = i % gridSize;
+            
+            // Set thick borders for sub-grids
+            if (col % subGridSize === subGridSize - 1) {
+                cell.dataset.rightBorder = "thick";
+            }
+            if (row % subGridSize === subGridSize - 1) {
+                cell.dataset.bottomBorder = "thick";
+            }
+            if (col % subGridSize === 0) {
+                cell.dataset.leftBorder = "thick";
+            }
+            if (row % subGridSize === 0) {
+                cell.dataset.topBorder = "thick";
+            }
+            
+            // Set initial cell value
+            const cellIndex = i < puzzleData.length ? i : i % puzzleData.length;
+            const cellValue = puzzleData[cellIndex] !== undefined ? puzzleData[cellIndex] : 0;
+            
+            if (cellValue !== 0) {
                 cell.classList.add('given');
-                cell.textContent = puzzleData[i];
+                cell.textContent = cellValue;
             } else {
                 cell.classList.add('user-filled');
-                cell.textContent = gameState[i] !== 0 ? gameState[i] : '';
+                const stateIndex = i < gameState.length ? i : i % gameState.length;
+                cell.textContent = gameState[stateIndex] !== 0 ? gameState[stateIndex] : '';
                 
                 // Add pencil marks container
                 const pencilMarks = document.createElement('div');
@@ -614,6 +671,12 @@
             cell.onclick = () => selectCell(i);
             board.appendChild(cell);
         }
+        
+        // Add outer borders to the board
+        const firstCell = board.querySelector('.sudoku-cell:first-child');
+        const lastCell = board.querySelector('.sudoku-cell:last-child');
+        if (firstCell) firstCell.style.borderTopLeftRadius = '4px';
+        if (lastCell) lastCell.style.borderBottomRightRadius = '4px';
     }
 
     function selectCell(index) {
@@ -621,35 +684,33 @@
         
         // Deselect previous cell
         if (selectedCell !== null) {
-            document.querySelector(`[data-index="${selectedCell}"]`).classList.remove('selected');
-            // Remove highlight from same row/col/box
+            const prevCell = document.querySelector(`[data-index="${selectedCell}"]`);
+            if (prevCell) prevCell.classList.remove('selected');
             removeHighlights();
         }
         
         selectedCell = index;
         const cell = document.querySelector(`[data-index="${index}"]`);
-        cell.classList.add('selected');
+        if (cell) {
+            cell.classList.add('selected');
+            highlightRelatedCells(index);
+        }
         
-        // Highlight same row, column, and box
-        highlightRelatedCells(index);
-        
-        // Update number pad active state
         updateNumberPad();
     }
 
     function highlightRelatedCells(index) {
-        const size = Math.sqrt(puzzleData.length);
-        const row = Math.floor(index / size);
-        const col = index % size;
-        const boxSize = Math.sqrt(size);
-        const boxRow = Math.floor(row / boxSize);
-        const boxCol = Math.floor(col / boxSize);
+        const row = Math.floor(index / gridSize);
+        const col = index % gridSize;
+        const subGridSize = Math.sqrt(gridSize);
+        const boxRow = Math.floor(row / subGridSize);
+        const boxCol = Math.floor(col / subGridSize);
         
         document.querySelectorAll('.sudoku-cell').forEach(cell => {
             const cellRow = parseInt(cell.dataset.row);
             const cellCol = parseInt(cell.dataset.col);
-            const cellBoxRow = Math.floor(cellRow / boxSize);
-            const cellBoxCol = Math.floor(cellCol / boxSize);
+            const cellBoxRow = Math.floor(cellRow / subGridSize);
+            const cellBoxCol = Math.floor(cellCol / subGridSize);
             
             if (cellRow === row || cellCol === col || 
                 (cellBoxRow === boxRow && cellBoxCol === boxCol)) {
@@ -668,10 +729,8 @@
         const pad = document.getElementById('numberPad');
         pad.innerHTML = '';
         
-        const size = Math.sqrt(puzzleData.length);
-        
-        // Numbers 1 to size
-        for (let i = 1; i <= size; i++) {
+        // Numbers 1 to gridSize
+        for (let i = 1; i <= gridSize; i++) {
             const btn = document.createElement('button');
             btn.className = 'number-btn';
             btn.textContent = i;
@@ -693,6 +752,9 @@
         pencilBtn.onclick = togglePencilMode;
         pencilBtn.id = 'pencilBtn';
         pad.appendChild(pencilBtn);
+        
+        // Ensure we have exactly 5 columns
+        pad.style.gridTemplateColumns = 'repeat(5, 1fr)';
     }
 
     function updateNumberPad() {
@@ -701,14 +763,22 @@
         });
         
         if (selectedCell !== null && gameState[selectedCell] !== 0) {
-            const activeBtn = document.querySelector(`.number-btn:nth-child(${gameState[selectedCell]})`);
-            if (activeBtn) activeBtn.classList.add('active');
+            const numberBtns = document.querySelectorAll('.number-btn');
+            for (let i = 0; i < numberBtns.length; i++) {
+                if (numberBtns[i].textContent == gameState[selectedCell]) {
+                    numberBtns[i].classList.add('active');
+                    break;
+                }
+            }
         }
         
         const pencilBtn = document.getElementById('pencilBtn');
         if (pencilMode) {
             pencilBtn.classList.add('active');
             pencilBtn.style.background = 'var(--gradient)';
+        } else {
+            pencilBtn.style.background = '';
+            pencilBtn.classList.remove('active');
         }
     }
 
@@ -716,7 +786,7 @@
         if (selectedCell === null || isSolved) return;
         
         const cell = document.querySelector(`[data-index="${selectedCell}"]`);
-        if (cell.classList.contains('given')) return;
+        if (!cell || cell.classList.contains('given')) return;
         
         // Save to history
         saveToHistory();
@@ -729,8 +799,9 @@
             gameState[selectedCell] = num;
             cell.textContent = num !== 0 ? num : '';
             
-            // Check for errors
-            if (num !== 0 && solutionData[selectedCell] !== num) {
+            // Check for errors (only if we have solution data for this cell)
+            const solutionIndex = selectedCell < solutionData.length ? selectedCell : selectedCell % solutionData.length;
+            if (num !== 0 && solutionData[solutionIndex] !== undefined && solutionData[solutionIndex] !== num) {
                 cell.classList.add('error');
                 errors++;
                 document.getElementById('errorsCount').textContent = errors;
@@ -745,7 +816,16 @@
             }
             
             // Check if solved
-            if (JSON.stringify(gameState) === JSON.stringify(solutionData)) {
+            let isComplete = true;
+            for (let i = 0; i < gameState.length; i++) {
+                const solIndex = i < solutionData.length ? i : i % solutionData.length;
+                if (gameState[i] !== solutionData[solIndex]) {
+                    isComplete = false;
+                    break;
+                }
+            }
+            
+            if (isComplete) {
                 completePuzzle();
             }
         }
@@ -791,7 +871,7 @@
 
     function saveToHistory() {
         history.push(JSON.parse(JSON.stringify(gameState)));
-        future = []; // Clear redo history
+        future = [];
     }
 
     function undo() {
@@ -812,23 +892,25 @@
 
     function updateBoardFromState() {
         const cells = document.querySelectorAll('.sudoku-cell');
+        errors = 0;
+        
         cells.forEach((cell, index) => {
             if (!cell.classList.contains('given')) {
-                cell.textContent = gameState[index] !== 0 ? gameState[index] : '';
+                const stateIndex = index < gameState.length ? index : index % gameState.length;
+                cell.textContent = gameState[stateIndex] !== 0 ? gameState[stateIndex] : '';
                 
                 // Update error state
-                if (gameState[index] !== 0 && solutionData[index] !== gameState[index]) {
+                const solIndex = index < solutionData.length ? index : index % solutionData.length;
+                if (gameState[stateIndex] !== 0 && solutionData[solIndex] !== undefined && 
+                    solutionData[solIndex] !== gameState[stateIndex]) {
                     cell.classList.add('error');
+                    errors++;
                 } else {
                     cell.classList.remove('error');
                 }
             }
         });
         
-        // Update errors count
-        errors = gameState.reduce((count, val, idx) => {
-            return count + (val !== 0 && solutionData[idx] !== val ? 1 : 0);
-        }, 0);
         document.getElementById('errorsCount').textContent = errors;
     }
 
@@ -867,7 +949,11 @@
         
         cells.forEach((cell, index) => {
             if (!cell.classList.contains('given')) {
-                if (gameState[index] !== solutionData[index]) {
+                const stateIndex = index < gameState.length ? index : index % gameState.length;
+                const solIndex = index < solutionData.length ? index : index % solutionData.length;
+                
+                if (solutionData[solIndex] !== undefined && 
+                    gameState[stateIndex] !== solutionData[solIndex]) {
                     cell.classList.add('error');
                     isValid = false;
                 } else {
@@ -896,12 +982,14 @@
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                if (type === 'reveal_cell' && data.cell_index !== undefined) {
-                    revealCell(data.cell_index, data.value);
-                }
+            if (data.success && type === 'reveal_cell' && data.cell_index !== undefined) {
+                revealCell(data.cell_index, data.value);
                 showAlert('Hint applied successfully!', 'success');
             }
+        })
+        .catch(error => {
+            console.error('Hint error:', error);
+            showAlert('Failed to apply hint', 'danger');
         });
     }
 
@@ -910,10 +998,11 @@
         gameState[index] = value;
         
         const cell = document.querySelector(`[data-index="${index}"]`);
-        cell.textContent = value;
-        cell.classList.add('hint');
-        
-        setTimeout(() => cell.classList.remove('hint'), 2000);
+        if (cell) {
+            cell.textContent = value;
+            cell.classList.add('hint');
+            setTimeout(() => cell.classList.remove('hint'), 2000);
+        }
     }
 
     function completePuzzle() {
@@ -926,7 +1015,7 @@
         const timeBonus = Math.max(0, Math.floor((timeLimit - timeSpent) / 60) * 10);
         const hintsPenalty = hints * 10;
         const errorsPenalty = errors * 5;
-        const totalScore = baseScore + timeBonus - hintsPenalty - errorsPenalty;
+        const totalScore = Math.max(0, baseScore + timeBonus - hintsPenalty - errorsPenalty);
         
         // Update result display
         document.getElementById('baseScore').textContent = baseScore;
@@ -958,6 +1047,13 @@
                 errors_made: errors,
                 score: score
             })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Submission result:', data);
+        })
+        .catch(error => {
+            console.error('Submission error:', error);
         });
     }
 
@@ -967,7 +1063,8 @@
             solution: solutionData,
             state: gameState,
             timestamp: new Date().toISOString(),
-            session_id: sessionId
+            session_id: sessionId,
+            grid_size: gridSize
         };
         
         const blob = new Blob([JSON.stringify(gameData, null, 2)], { type: 'application/json' });
@@ -983,17 +1080,21 @@
     function loadGameState() {
         const saved = localStorage.getItem(`sudoku_session_${sessionId}`);
         if (saved) {
-            const data = JSON.parse(saved);
-            gameState = data.state || gameState;
-            history = data.history || [];
-            future = data.future || [];
-            errors = data.errors || 0;
-            hints = data.hints || 0;
-            startTime = new Date(data.startTime) || startTime;
-            
-            updateBoardFromState();
-            document.getElementById('errorsCount').textContent = errors;
-            document.getElementById('hintsUsed').textContent = hints;
+            try {
+                const data = JSON.parse(saved);
+                gameState = data.state || gameState;
+                history = data.history || [];
+                future = data.future || [];
+                errors = data.errors || 0;
+                hints = data.hints || 0;
+                if (data.startTime) startTime = new Date(data.startTime);
+                
+                updateBoardFromState();
+                document.getElementById('errorsCount').textContent = errors;
+                document.getElementById('hintsUsed').textContent = hints;
+            } catch (e) {
+                console.error('Error loading saved state:', e);
+            }
         }
     }
 
@@ -1004,7 +1105,8 @@
             future: future,
             errors: errors,
             hints: hints,
-            startTime: startTime.toISOString()
+            startTime: startTime.toISOString(),
+            gridSize: gridSize
         };
         localStorage.setItem(`sudoku_session_${sessionId}`, JSON.stringify(data));
     }
@@ -1030,6 +1132,37 @@
         } else if (key === 'p' || key === 'P') {
             e.preventDefault();
             togglePencilMode();
+        } else if (key === 'ArrowUp' || key === 'ArrowDown' || 
+                   key === 'ArrowLeft' || key === 'ArrowRight') {
+            e.preventDefault();
+            navigateWithArrowKeys(key);
+        }
+    }
+
+    function navigateWithArrowKeys(direction) {
+        if (selectedCell === null) return;
+        
+        let newIndex = selectedCell;
+        const row = Math.floor(selectedCell / gridSize);
+        const col = selectedCell % gridSize;
+        
+        switch(direction) {
+            case 'ArrowUp':
+                if (row > 0) newIndex = selectedCell - gridSize;
+                break;
+            case 'ArrowDown':
+                if (row < gridSize - 1) newIndex = selectedCell + gridSize;
+                break;
+            case 'ArrowLeft':
+                if (col > 0) newIndex = selectedCell - 1;
+                break;
+            case 'ArrowRight':
+                if (col < gridSize - 1) newIndex = selectedCell + 1;
+                break;
+        }
+        
+        if (newIndex !== selectedCell && newIndex >= 0 && newIndex < gridSize * gridSize) {
+            selectCell(newIndex);
         }
     }
 
@@ -1070,6 +1203,9 @@
             updateBoardFromState();
             document.getElementById('errorsCount').textContent = 0;
             document.getElementById('hintsUsed').textContent = 0;
+            startTime = new Date();
+            clearInterval(timerInterval);
+            startTimer();
         }
     };
 

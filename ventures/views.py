@@ -29,57 +29,6 @@ from django.core.paginator import Paginator
 from django.db.models import Sum, Count
 
 @login_required
-def dashboard(request):
-    """Updated dashboard view without games"""
-    from core.models import UserWallet
-    from ventures.models import Venture, VentureTicket, VentureOwnership
-    
-    # Get user's wallet data
-    try:
-        wallet = UserWallet.objects.get(user=request.user)
-        star_balance = get_balance(wallet.recipient_id)
-    except:
-        star_balance = 0
-    
-    # Get user's ventures and tickets
-    user_ventures = Venture.objects.filter(ownerships__owner=request.user).distinct()
-    owned_tickets = VentureTicket.objects.filter(buyer=request.user, status='purchased')
-    
-    # Calculate user stats
-    total_invested = VentureOwnership.objects.filter(
-        owner=request.user
-    ).aggregate(total=Sum('investment_amount'))['total'] or 0
-    
-    equity_total = VentureOwnership.objects.filter(
-        owner=request.user
-    ).aggregate(total=Sum('equity_percentage'))['total'] or 0
-    
-    # Active ventures for funding
-    active_ventures = Venture.objects.filter(
-        status='funding',
-        funding_end__gte=timezone.now(),
-        funding_start__lte=timezone.now()
-    ).order_by('-created_at')[:3]
-    
-    context = {
-        'user_stats': {
-            'total_invested': total_invested,
-            'ventures_count': user_ventures.count(),
-            'equity_total': equity_total,
-            'portfolio_value': total_invested * 1.2,  # Simplified calculation
-        },
-        'wallet_data': {
-            'star_tokens': star_balance,
-            'tickets': owned_tickets.count(),
-        },
-        'user_ventures': user_ventures[:3],
-        'owned_tickets': owned_tickets,
-        'active_ventures': active_ventures,
-        'today': timezone.now(),
-    }
-    return render(request, 'dashboard/dashboard.html', context)
-
-@login_required
 def ventures_list(request):
     """List all ventures with filters"""
     from ventures.models import Venture, VentureOwnership
@@ -181,7 +130,7 @@ def venture_detail(request, slug):
         'user_ticket': user_ticket,
         'investors': investors_data,
         'timeline_data': timeline_data,
-        'today': timezone.now(),
+        'today': datetime.now(),
     }
     return render(request, 'ventures/venture_detail.html', context)
 
@@ -485,32 +434,22 @@ def create_venture(request):
     
     try:
         # Extract form data
+        founder = request.user
         name = request.POST.get('name', '').strip()
         slug = request.POST.get('slug', '').strip()
         description = request.POST.get('description', '').strip()
-        problem_statement = request.POST.get('problem_statement', '').strip()
-        solution = request.POST.get('solution', '').strip()
-        
-        # Funding details
         funding_goal = request.POST.get('funding_goal', '0')
         ticket_price = request.POST.get('ticket_price', '0')
-        max_tickets = request.POST.get('max_tickets', '100')
+        max_tickets = funding_goal/ticket_price
         
-        # Timeline
-        funding_start = request.POST.get('funding_start', '')
-        funding_end = request.POST.get('funding_end', '')
         
         # Validate required fields
         required_fields = {
             'name': name,
             'slug': slug,
             'description': description,
-            'problem_statement': problem_statement,
-            'solution': solution,
             'funding_goal': funding_goal,
             'ticket_price': ticket_price,
-            'funding_start': funding_start,
-            'funding_end': funding_end
         }
         
         missing_fields = [field for field, value in required_fields.items() if not value]
@@ -527,29 +466,12 @@ def create_venture(request):
             messages.warning(request, "Invalid numeric values!")
             return redirect(request.META.get('HTTP_REFERER', '/'))
         
-        # Convert datetime strings
-        try:
-            funding_start_dt = datetime.fromisoformat(funding_start.replace('Z', '+00:00'))
-            funding_end_dt = datetime.fromisoformat(funding_end.replace('Z', '+00:00'))
-        except ValueError:
-            messages.warning(request, "Invalid date format!")
-            return redirect(request.META.get('HTTP_REFERER', '/'))
-        
         # Create NFT for the venture
         nft_symbol = slug[:5].upper() + "VENT"
         nft_result = create_nft(
             title=f"{name} Venture",
             symbol=nft_symbol,
-            metadata={
-                "name": name,
-                "description": description[:100] + "..." if len(description) > 100 else description,
-                "type": "venture_collection",
-                "properties": {
-                    "category": "business_venture",
-                    "funding_goal": str(funding_goal),
-                    "ticket_price": str(ticket_price)
-                }
-            }
+            max_tickets=int(max_tickets)
         )
         
         if nft_result['status'] == 'failed':
@@ -560,14 +482,12 @@ def create_venture(request):
             name=name,
             slug=slug,
             description=description,
-            problem_statement=problem_statement,
-            solution=solution,
-            founder=request.user,
+            founder=founder,
             funding_goal=funding_goal,
             ticket_price=ticket_price,
             max_tickets=max_tickets,
-            funding_start=funding_start_dt,
-            funding_end=funding_end_dt,
+            #funding_start=funding_start_dt,
+            #funding_end=funding_end_dt,
             nft_contract_address=nft_result['token_id'],
             nft_base_metadata={
                 "name": name,
@@ -581,14 +501,6 @@ def create_venture(request):
                 ]
             },
             status='funding'
-        )
-        
-        # Create initial notification
-        from core.models import Alert  # Assuming you have an Alert model
-        Alert.objects.create(
-            title="New Venture Launched",
-            content=f"{name} is now accepting investments! Goal: ${funding_goal:,.0f}, Tickets: ${ticket_price:,.0f} each",
-            icon='rocket'
         )
         
         # Clear relevant caches

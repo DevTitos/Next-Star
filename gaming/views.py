@@ -11,9 +11,11 @@ from ventures.models import Venture
 def is_admin(user):
     return user.is_staff
 
+
 @login_required
 def game_hub(request, venture_id):
     venture = get_object_or_404(Venture, id=venture_id)
+    print(venture)
     games = VentureGame.objects.filter(venture=venture, is_active=True)
     
     # Get completion stats
@@ -107,7 +109,7 @@ def create_venture_game(request):
             venture_game = VentureGame.objects.create(
                 venture=venture,
                 game_type=game_type,
-                difficulty=difficulty,
+                difficulty=difficulty, 
                 grid_size=grid_size,
                 base_points=int(request.POST.get('base_points', 100)),
                 time_limit_seconds=int(request.POST.get('time_limit', 3600)),

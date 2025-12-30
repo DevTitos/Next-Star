@@ -5,6 +5,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),
     path('', include('matrix.urls')),
-    path('ventures/', include('ventures.urls')),
-    path('gaming/', include('gaming.urls')),
+    path('', include('ventures.urls')),
+    path('', include('gaming.urls')),
 ]

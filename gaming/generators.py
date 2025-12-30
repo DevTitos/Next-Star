@@ -48,7 +48,7 @@ class PuzzleGenerator:
         puzzle = self._create_sudoku_puzzle(solution, size)
         
         # Calculate difficulty score
-        difficulty_score = self._calculate_sudoku_difficulty(puzzle, solution)
+        difficulty_score = 0.5#self._calculate_sudoku_difficulty(puzzle, solution)
         
         return puzzle, solution, str(random.getrandbits(128)), difficulty_score
     

@@ -378,15 +378,7 @@
                 </div>
             </div>
             
-            <div class="game-progress">
-                <div class="progress-bar">
-                    {% widthratio completed_puzzles|get_item:game.id game.puzzles.count 100 as progress %}
-                    <div class="progress-fill" style="width: {{ progress }}%"></div>
-                </div>
-                <div class="progress-text">
-                    {{ completed_puzzles|get_item:game.id|default:0 }}/{{ game.puzzles.count }} puzzles solved
-                </div>
-            </div>
+            
             
             {% if progress == 100 %}
             <div class="completion-badge">

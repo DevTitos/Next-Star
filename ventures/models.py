@@ -40,8 +40,8 @@ class Venture(models.Model):
     
     # Timeline
     created_at = models.DateTimeField(auto_now_add=True)
-    funding_start = models.DateTimeField()
-    funding_end = models.DateTimeField()
+    funding_start = models.DateTimeField(blank=True, null=True)
+    funding_end = models.DateTimeField(blank=True, null=True)
     
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')

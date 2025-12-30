@@ -34,6 +34,7 @@ import json
 from hiero_sdk_python import (
     AccountId,
 )
+from ventures.models import Venture, VentureTicket, VentureOwnership
 
 load_dotenv()
 def id_generator(size=8, chars=string.ascii_uppercase + string.digits):
@@ -207,6 +208,61 @@ def landing(request):
 def dashboard_view(request):
     """Main dashboard view with all sections"""
     user = request.user
+
+    user_ventures = Venture.objects.filter(ownerships__owner=request.user).distinct()
+    owned_tickets = VentureTicket.objects.filter(buyer=request.user, status='purchased')
+    # Calculate user stats
+    total_invested = VentureOwnership.objects.filter(
+        owner=request.user
+    ).aggregate(total=Sum('investment_amount'))['total'] or 0
+    
+    equity_total = VentureOwnership.objects.filter(
+        owner=request.user
+    ).aggregate(total=Sum('equity_percentage'))['total'] or 0
+    
+    # Active ventures for funding
+    active_ventures_ = Venture.objects.filter(
+        status='funding',
+        funding_end__gte=timezone.now(),
+        funding_start__lte=timezone.now()
+    ).order_by('-created_at')[:3]
+    
+    all_ventures = Venture.objects.filter(
+        status__in=['funding', 'active']
+    ).order_by('-created_at')
+
+    # Get 2 active ventures for overview
+    active_ventures = all_ventures[:2]
+    
+    # Get user's venture investments
+    user_investments = VentureOwnership.objects.filter(owner=request.user)
+    user_ticket_ventures = VentureTicket.objects.filter(
+        buyer=request.user, 
+        status='purchased'
+    ).values_list('venture_id', flat=True)
+    
+    # Calculate stats
+    total_invested = user_investments.aggregate(
+        total=Sum('investment_amount')
+    )['total'] or 0
+    
+    equity_total = user_investments.aggregate(
+        total=Sum('equity_percentage')
+    )['total'] or 0
+    
+    portfolio_value = total_invested * 1.2  # Simple calculation
+    
+    # Get investor data for each venture
+    for venture in all_ventures:
+        # Get top 3 investors for each venture
+        top_investors = VentureOwnership.objects.filter(
+            venture=venture
+        ).order_by('-investment_amount')[:3]
+        venture.top_investors = list(top_investors)
+        venture.investor_count = VentureOwnership.objects.filter(
+            venture=venture
+        ).count()
+    
     
     try:
         # Get user wallet
@@ -217,82 +273,7 @@ def dashboard_view(request):
         week_ago = today - timedelta(days=7)
         month_ago = today - timedelta(days=30)
         
-        # Simulate game data (replace with actual models)
-        active_games = [
-            {
-                'id': 1,
-                'name': 'Tech Venture Arena',
-                'type': 'Venture Arena',
-                'players': 245,
-                'prize_pool': 12500,
-                'ends_in': '2 days',
-                'progress': 65,
-                'status': 'active',
-                'icon': 'fa-crosshairs',
-                'color': 'primary'
-            },
-            {
-                'id': 2,
-                'name': 'AgriTech Challenge',
-                'type': 'CEO Matrix',
-                'players': 189,
-                'prize_pool': 8500,
-                'ends_in': '1 day',
-                'progress': 85,
-                'status': 'active',
-                'icon': 'fa-chess-king',
-                'color': 'success'
-            },
-            {
-                'id': 3,
-                'name': 'FinTech Maze',
-                'type': 'Infinite Maze',
-                'players': 567,
-                'prize_pool': 21500,
-                'ends_in': '3 days',
-                'progress': 45,
-                'status': 'active',
-                'icon': 'fa-infinity',
-                'color': 'accent'
-            }
-        ]
         
-        # User ventures (owned/participated)
-        user_ventures = [
-            {
-                'id': 1,
-                'name': 'EcoEnergy Africa',
-                'industry': 'Energy',
-                'equity': 5.2,
-                'value': 12500,
-                'growth': 15.3,
-                'status': 'active',
-                'role': 'Investor',
-                'members': 45
-            },
-            {
-                'id': 2,
-                'name': 'FarmChain AI',
-                'industry': 'Agriculture',
-                'equity': 12.8,
-                'value': 28750,
-                'growth': 32.7,
-                'status': 'active',
-                'role': 'CEO',
-                'members': 23
-            },
-            {
-                'id': 3,
-                'name': 'MediTech Connect',
-                'industry': 'Healthcare',
-                'equity': 3.5,
-                'value': 8750,
-                'growth': 8.2,
-                'status': 'funding',
-                'role': 'Investor',
-                'members': 67
-            }
-        ]
         
         # Wallet data with simulated blockchain info
         wallet_data = {
@@ -300,9 +281,9 @@ def dashboard_view(request):
             'full_public_key': wallet.public_key,
             'hedera_id': wallet.recipient_id,
             'balance': get_balance(wallet.recipient_id) if hasattr(wallet, 'recipient_id') else 0,
-            'star_tokens': 2450,
-            'tickets': 15,
-            'nfts': 8,
+            'star_tokens': get_balance(wallet.recipient_id) if hasattr(wallet, 'recipient_id') else 0,
+            'tickets': owned_tickets.count(),
+            'nfts': owned_tickets.count(),
             'recent_transactions': [
                 {
                     'id': '0x1a2b...3c4d',
@@ -336,7 +317,7 @@ def dashboard_view(request):
         
         # User stats
         user_stats = {
-            'total_ventures': len(user_ventures),
+            'total_ventures': active_ventures.count(),
             'total_invested': sum(v['value'] * v['equity'] / 100 for v in user_ventures),
             'total_wins': 3,
             'total_tickets': wallet_data['tickets'],
@@ -348,49 +329,7 @@ def dashboard_view(request):
             'streak': 7
         }
         
-        # Recent activity
-        recent_activity = [
-            {
-                'type': 'game_win',
-                'title': 'Won Venture Arena',
-                'description': 'First place in Tech Innovation Challenge',
-                'amount': '+1250 STAR',
-                'time': '2 hours ago',
-                'icon': 'fa-trophy',
-                'color': 'success',
-                'color_code': '123,63,228'
-            },
-            {
-                'type': 'investment',
-                'title': 'Invested in EcoEnergy',
-                'description': 'Purchased 5.2% equity',
-                'amount': '-500 STAR',
-                'time': '1 day ago',
-                'icon': 'fa-chart-line',
-                'color': 'primary',
-                'color_code': '123,63,228'
-            },
-            {
-                'type': 'nft_minted',
-                'title': 'NFT Minted',
-                'description': 'Equity Certificate #4589',
-                'amount': 'NFT',
-                'time': '2 days ago',
-                'icon': 'fa-certificate',
-                'color': 'accent',
-                'color_code': '0,255,157'
-            },
-            {
-                'type': 'ticket_purchase',
-                'title': 'Ticket Purchased',
-                'description': 'AgriTech Challenge entry',
-                'amount': '-50 STAR',
-                'time': '3 days ago',
-                'icon': 'fa-ticket-alt',
-                'color': 'warning',
-                'color_code': '0,255,157'
-            }
-        ]
+        
         
         # Leaderboard data
         leaderboard = [
@@ -405,13 +344,35 @@ def dashboard_view(request):
             'user': user,
             'wallet': wallet,
             'wallet_data': wallet_data,
-            'active_games': active_games,
+            'active_ventures': active_ventures,
             'user_ventures': user_ventures,
             'user_stats': user_stats,
-            'recent_activity': recent_activity,
             'leaderboard': leaderboard,
             'today': today,
-            'section': request.GET.get('section', 'overview')
+            'section': request.GET.get('section', 'overview'),
+
+            # Stats for overview section
+            'total_invested': total_invested,
+            'equity_total': equity_total,
+            'portfolio_value': portfolio_value,
+
+            # For ventures section
+            'all_ventures': all_ventures,
+            'user_ticket_ventures': list(user_ticket_ventures),
+
+            # Other existing context
+            'today': timezone.now(),
+            'investment_progress': min(100, (total_invested / 100000) * 100) if total_invested else 75,
+            'active_percentage': min(100, (all_ventures.count() / 10) * 100) if all_ventures.exists() else 60,
+            'portfolio_progress': min(100, (portfolio_value / 200000) * 100) if portfolio_value else 90,
+
+            # Keep existing context if needed
+            'user_stats': {
+                'total_invested': total_invested,
+                'total_ventures': user_investments.count(),
+                'win_rate': 75,  # Placeholder
+                'total_wins': user_investments.count(),  # Placeholder
+            }
         }
         
         return render(request, 'dashboard/dashboard.html', context)

@@ -3,13 +3,13 @@ from . import views
 
 urlpatterns = [
     # Game Hub & Navigation
-    path('venture/<int:venture_id>/hub/', views.game_hub, name='game_hub'),
-    path('venture/<int:venture_id>/play/<str:game_type>/', views.play_game, name='play_game'),
-    path('venture/<int:venture_id>/leaderboard/', views.leaderboard, name='leaderboard'),
-    path('venture/<int:venture_id>/download/', views.download_puzzle, name='download_puzzle'),
+    path('venture/<uuid:venture_id>/hub/', views.game_hub, name='game_hub'),
+    path('venture/<uuid:venture_id>/play/<str:game_type>/', views.play_game, name='play_game'),
+    path('venture/<uuid:venture_id>/leaderboard/', views.leaderboard, name='leaderboard'),
+    path('venture/<uuid:venture_id>/download/', views.download_puzzle, name='download_puzzle'),
     
     # Admin
-    path('admin/games/create/', views.create_venture_game, name='create_venture_game'),
+    path('gaming/admin/create/', views.create_venture_game, name='create_venture_game'),
     
     # API Endpoints
     path('api/sessions/<int:session_id>/submit/', views.submit_solution, name='submit_solution'),
@@ -18,5 +18,5 @@ urlpatterns = [
          views.api_download_puzzle, name='download_puzzle_api'),
     
     # Auto-redirect for convenience
-    path('', views.game_hub, name='gaming_home'),
+    path('gaming/', views.game_hub, name='gaming_home'),
 ]
